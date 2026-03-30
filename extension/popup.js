@@ -209,3 +209,39 @@ window.onload = function () {
   //   alert("The transcript may not always be accurate and is only intended to aid in improving productivity. It is the responsibility of the user to ensure they comply with any applicable laws/rules.")
   // })
 }
+
+// Handle permission request from background service worker.
+// Background cannot call requestPermission() — it has no window.
+// Popup handles it here when it's open.
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+    if (message.type === "request_folder_permission") {
+        const request = indexedDB.open("meet-to-md-storage", 1)
+        request.onsuccess = function (e) {
+            const db = e.target.result
+            const tx = db.transaction("folder-handles", "readonly")
+            const store = tx.objectStore("folder-handles")
+            const getReq = store.get("obsidian-folder")
+            getReq.onsuccess = function (e) {
+                const handle = e.target.result
+                if (!handle) {
+                    sendResponse({ granted: false })
+                    return
+                }
+                handle.requestPermission({ mode: "readwrite" })
+                    .then(result => {
+                        sendResponse({ granted: result === "granted" })
+                    })
+                    .catch(() => {
+                        sendResponse({ granted: false })
+                    })
+            }
+            getReq.onerror = function () {
+                sendResponse({ granted: false })
+            }
+        }
+        request.onerror = function () {
+            sendResponse({ granted: false })
+        }
+        return true // Keep message channel open for async response
+    }
+})

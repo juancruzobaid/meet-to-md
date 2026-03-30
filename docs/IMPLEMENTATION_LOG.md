@@ -44,6 +44,26 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Fix folder permission recovery via popup message
+
+**Task received:** Fix permission flow when browser restart revokes File System Access API permission. Service worker sends message to popup to request permission from user.
+
+**Files modified:**
+- `extension/background.js` — Added `writeToObsidianFolder()` helper. Replaced permission check: when `queryPermission` returns `"prompt"`, sends `request_folder_permission` message to popup. 5s timeout falls back to `chrome.downloads` if popup not open.
+- `extension/popup.js` — Added `chrome.runtime.onMessage` listener (outside `window.onload`) that handles `request_folder_permission`: reads handle from IndexedDB, calls `handle.requestPermission()`, responds with `{ granted: true/false }`.
+
+**Tests performed:**
+- Code review of message round-trip flow ✅
+- Verified timeout fallback when popup not open ✅
+- Verified `chrome.runtime.lastError` handled gracefully ✅
+
+**Final result:** After browser restart, if popup is open during meeting end, user sees permission dialog and file saves to Obsidian folder. If popup is closed, falls back to Downloads.
+
+**Business Logic updated:** Yes — Obsidian Folder section updated with permission recovery flow
+**Master Plan updated:** No — no new features, just a fix
+
+---
+
 ### 2026-03-29 — Add Obsidian folder picker with File System Access API
 
 **Task received:** Add folder picker to popup. Save FileSystemDirectoryHandle to IndexedDB. Write MD files directly to selected folder. Fall back to chrome.downloads if permission lost.

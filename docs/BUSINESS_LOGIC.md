@@ -125,12 +125,16 @@ source: Google Meet captions
 - IndexedDB database: `meet-to-md-storage`, object store: `folder-handles`, key: `obsidian-folder`
 - On meeting end, `downloadTranscript()` attempts to use saved handle:
   1. Reads handle from IndexedDB via `getFolderHandle()`
-  2. Calls `handle.queryPermission({ mode: "readwrite" })` — permission may be revoked by Chrome after browser restart
-  3. If `"granted"` → writes file directly to folder (filename without `meet-to-md/` prefix)
-  4. If permission lost or no handle → falls back to `chrome.downloads` (file goes to `meet-to-md/` subfolder in Downloads)
+  2. Calls `handle.queryPermission({ mode: "readwrite" })`
+  3. If `"granted"` → writes file directly to folder via `writeToObsidianFolder()` (filename without `meet-to-md/` prefix)
+  4. If `"prompt"` (permission revoked after browser restart) → sends `request_folder_permission` message to popup
+     - If popup is open: popup reads handle from IndexedDB, calls `handle.requestPermission({ mode: "readwrite" })` which shows browser permission dialog. Responds `{ granted: true/false }`.
+     - If popup is closed: message has no receiver — 5-second timeout triggers fallback
+  5. If no handle, permission denied, or timeout → falls back to `chrome.downloads` (file goes to `meet-to-md/` subfolder in Downloads)
 - The popup context uses inline IndexedDB helpers (cannot use `importScripts` outside service worker)
+- The `requestPermission()` call requires a user gesture context (browser window) — this is why the popup must handle it, not the service worker
 
-**Connections:** `popup.js` saves handle → IndexedDB ← `background.js` reads handle → writes file or falls back to `chrome.downloads`
+**Connections:** `popup.js` saves handle → IndexedDB ← `background.js` reads handle → writes file or asks popup for permission → falls back to `chrome.downloads`
 
 ---
 

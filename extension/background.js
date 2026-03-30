@@ -38,6 +38,25 @@ const PLATFORM_CONFIGS = {
     }
 }
 
+/**
+ * Writes content to a file in the saved Obsidian folder.
+ * Returns a promise that resolves with true on success, false on failure.
+ * @param {FileSystemDirectoryHandle} handle
+ * @param {string} filename - just the filename, no path prefix
+ * @param {string} content
+ * @returns {Promise<boolean>}
+ */
+function writeToObsidianFolder(handle, filename, content) {
+    return handle.getFileHandle(filename, { create: true })
+        .then(fileHandle => fileHandle.createWritable())
+        .then(writable => writable.write(content).then(() => writable.close()))
+        .then(() => true)
+        .catch(err => {
+            console.error("Failed to write to Obsidian folder:", err)
+            return false
+        })
+}
+
 
 chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendResponse) {
     const message = /** @type {ExtensionMessage} */ (messageUnTyped)
@@ -450,33 +469,41 @@ function downloadTranscript(index, isWebhookEnabled) {
                             if (!handle) {
                                 throw new Error("No folder handle saved")
                             }
-                            // Check permission — can only auto-grant in SW if previously granted
                             return handle.queryPermission({ mode: "readwrite" }).then(permission => {
                                 if (permission === "granted") {
-                                    return handle
+                                    // Permission already active — write directly
+                                    return { handle, alreadyGranted: true }
                                 }
-                                // Permission not granted — can't request from service worker
-                                throw new Error("Permission not granted for saved folder")
+                                // Permission needs user gesture — ask popup to request it
+                                return new Promise((res) => {
+                                    chrome.runtime.sendMessage(
+                                        { type: "request_folder_permission" },
+                                        (response) => {
+                                            if (chrome.runtime.lastError || !response || !response.granted) {
+                                                res({ handle: null, alreadyGranted: false })
+                                            } else {
+                                                res({ handle, alreadyGranted: false })
+                                            }
+                                        }
+                                    )
+                                    // If popup is not open, sendMessage never calls back — timeout after 5s
+                                    setTimeout(() => res({ handle: null, alreadyGranted: false }), 5000)
+                                })
                             })
                         })
-                        .then(handle => {
-                            // Extract just the filename — generateMdFilename returns "meet-to-md/YYYY-MM-DD Title.md"
+                        .then(({ handle, alreadyGranted }) => {
+                            if (!handle) {
+                                throw new Error("Could not obtain folder permission")
+                            }
                             const justFilename = fileName.replace(/^meet-to-md\//, "")
-
-                            return handle.getFileHandle(justFilename, { create: true })
-                                .then(fileHandle => fileHandle.createWritable())
-                                .then(writable => {
-                                    return writable.write(content).then(() => writable.close())
+                            return writeToObsidianFolder(handle, justFilename, content).then(success => {
+                                if (!success) throw new Error("Write to folder failed")
+                                console.log("MD file saved to Obsidian folder:", justFilename)
+                                resolve("Transcript saved to Obsidian folder successfully")
+                                fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
+                                    mode: "no-cors"
                                 })
-                                .then(() => {
-                                    console.log("MD file saved to Obsidian folder:", justFilename)
-                                    resolve("Transcript saved to Obsidian folder successfully")
-
-                                    // Anonymous analytics ping
-                                    fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
-                                        mode: "no-cors"
-                                    })
-                                })
+                            })
                         })
                         .catch(err => {
                             // Fallback: use chrome.downloads (original behavior)
