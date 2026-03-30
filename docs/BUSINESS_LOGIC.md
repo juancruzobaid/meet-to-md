@@ -21,7 +21,7 @@ Meet to MD is a Chrome extension that captures Google Meet captions in real time
 
 ## User Roles
 ### Extension user (meeting participant)
-- **Can do:** capture transcripts, configure auto/manual mode, download TXT files, post to webhook, review last 10 meetings, retry failed webhooks
+- **Can do:** capture transcripts, configure auto/manual mode, download MD files, post to webhook, review last 10 meetings, retry failed webhooks
 - **Cannot do:** capture without CC enabled, capture audio (text only from captions)
 
 ---
@@ -45,36 +45,52 @@ Meet to MD is a Chrome extension that captures Google Meet captions in real time
 
 ---
 
-### Export — TXT (upstream, current)
-**Purpose:** Download transcript as a plain text file at meeting end.
+### Export — Markdown (replaces TXT)
+**Purpose:** Download transcript as a structured Markdown file with YAML frontmatter at meeting end.
 
 **What the user can do:**
-- Receive a `.txt` file automatically when the meeting ends (auto mode)
+- Receive a `.md` file automatically when the meeting ends (auto mode)
 - Download manually from meeting history
 
 **Business rules:**
-- File saved to `TranscripTonic/` subfolder in the browser's default Downloads directory
-- Filename format: `TranscripTonic/[Software] transcript-[Title] at [Timestamp] on.txt`
-- If filename is invalid, falls back to `TranscripTonic/Transcript.txt`
+- File saved to `meet-to-md/` subfolder in the browser's default Downloads directory
+- Filename format: `meet-to-md/YYYY-MM-DD [Meeting Title].md`
+- If filename is invalid, falls back to `meet-to-md/Meeting.md`
 - Last 10 meetings are kept in storage; older ones are dropped
-- Transcript and chat messages are included in the same file, separated by a divider
+- YAML frontmatter includes: date, meeting_id, language, participants, duration_minutes, source
+- Participants are deduplicated and sorted alphabetically from transcript speaker names
+- Duration calculated as whole minutes between meeting start and end timestamps
+- Language read from `chrome.storage.sync` key `captionLanguage` (default: `"en"`)
+- Chat messages section only included if chat messages exist
+- No branding footer
 
-**Current output format (TXT):**
+**Current output format (Markdown):**
+```markdown
+---
+date: 2025-03-29
+meeting_id: ""
+language: en
+participants:
+  - Donna
+  - Juan Cruz
+duration_minutes: 45
+source: Google Meet captions
+---
+
+# Weekly Sync — March 29, 2025
+
+## Transcript
+
+**Juan Cruz** (10:02): Good morning...
+
+**Donna** (10:03): Yes, I reviewed...
+
+## Chat Messages
+
+**Juan Cruz** (10:45): Here's the link...
 ```
-PersonName (DATE TIME)
-Transcript text here
 
----------------
-CHAT MESSAGES
----------------
-
-PersonName (DATE TIME)
-Message text here
-
----------------
-Transcript saved using TranscripTonic Chrome extension (...)
----------------
-```
+**Implementation files:** `extension/export/md-generator.js` → `generateMdFilename()`, `generateMdContent()`
 
 ---
 

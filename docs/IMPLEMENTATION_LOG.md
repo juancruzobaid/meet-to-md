@@ -44,6 +44,30 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Create MD generator and wire into export flow
+
+**Task received:** Issue #5 and #6 — Create md-generator.js and replace TXT export
+
+**Files created:**
+- `extension/export/md-generator.js` — `generateMdFilename()` and `generateMdContent()`
+
+**Files modified:**
+- `extension/background.js` — importScripts md-generator, read captionLanguage from storage, replace fileName and content generation in downloadTranscript()
+
+**Tests performed:**
+- Code review of generated md-generator.js output format ✅
+- Verified `getTranscriptString` and `getChatMessagesString` preserved for webhook use ✅
+- Verified fallback filename changed from `TranscripTonic/Transcript.txt` to `meet-to-md/Meeting.md` ✅
+
+**Final result:** Extension now exports `.md` files with YAML frontmatter instead of `.txt`. Downloads to `meet-to-md/` subfolder.
+
+**Business Logic updated:** Yes — Export module section replaced (TXT → Markdown)
+**Master Plan updated:** Yes — MD generator and Replace TXT export moved to Completed
+
+**Next step:** Manual validation in a live Google Meet session
+
+---
+
 ### 2025-03-29 — Fork setup and initial documentation
 
 **Task received:** Fork TranscripTonic, set up repo, create project docs.

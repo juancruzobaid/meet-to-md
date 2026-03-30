@@ -4,9 +4,9 @@
 A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
 
 ## Current Project Status
-**Phase:** Phase 0 completed — Fork set up, docs being initialized
-**Last Update:** 2025-03-29
-**Features running:** All TranscripTonic features (TXT export, auto/manual mode, webhooks, meeting history)
+**Phase:** Phase 1 completed — MD export replaces TXT
+**Last Update:** 2026-03-29
+**Features running:** MD export with YAML frontmatter, auto/manual mode, webhooks, meeting history
 
 ## Feature Roadmap
 
@@ -39,17 +39,23 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Description:** Repo forked, upstream remote added, docs/ folder initialized
 - **Completed:** 2025-03-29
 
-### 🚧 IN PROGRESS
 #### Project documentation
-- **Description:** Creating PROJECT_CONTEXT, MASTER_PLAN, BUSINESS_LOGIC, IMPLEMENTATION_LOG
-- **Progress:** In progress (this task)
-- **Next Step:** Commit docs to repo
+- **Description:** Created PROJECT_CONTEXT, MASTER_PLAN, BUSINESS_LOGIC, IMPLEMENTATION_LOG
+- **Completed:** 2025-03-29
+
+#### MD generator
+- **Description:** Created `extension/export/md-generator.js` with `generateMdFilename()` and `generateMdContent()`. Outputs YAML frontmatter (date, meeting_id, language, participants, duration_minutes) + structured Markdown transcript.
+- **Main Files:** `extension/export/md-generator.js`
+- **Completed:** 2026-03-29
+
+#### Replace TXT export
+- **Description:** Wired `md-generator.js` into `downloadTranscript()` in `background.js`. Extension now downloads `.md` files to `meet-to-md/` folder instead of `.txt` to `TranscripTonic/`.
+- **Main Files:** `extension/background.js` → `downloadTranscript()`
+- **Completed:** 2026-03-29
 
 ### 📋 PRIORITIZED BACKLOG
 
 #### High Priority
-- [ ] **MD generator:** Replace TXT export with Markdown + YAML frontmatter. Output: date, meeting_id, language, participants, duration_minutes, structured transcript and chat messages.
-- [ ] **Replace TXT export:** Wire `md-generator.js` into `downloadTranscript()` in `background.js`.
 - [ ] **File System Access API:** Let user pick destination folder (Obsidian vault). Add folder picker to settings. Persist handle across sessions.
 - [ ] **chrome.downloads fallback:** If File System Access API is unavailable, fall back to current download method.
 

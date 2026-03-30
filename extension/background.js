@@ -2,6 +2,9 @@
 /// <reference path="../types/chrome.d.ts" />
 /// <reference path="../types/index.js" />
 
+// @ts-ignore
+importScripts('export/md-generator.js')
+
 /** @type {Intl.DateTimeFormatOptions} */
 const timeFormat = {
     year: "numeric",
@@ -433,87 +436,64 @@ function downloadTranscript(index, isWebhookEnabled) {
             if (resultLocal.meetings && resultLocal.meetings[index]) {
                 const meeting = resultLocal.meetings[index]
 
-                // Sanitise meeting title to prevent invalid file name errors
-                // https://stackoverflow.com/a/78675894
-                const invalidFilenameRegex = /[:?"*<>|~/\\\u{1}-\u{1f}\u{7f}\u{80}-\u{9f}\p{Cf}\p{Cn}]|^[.\u{0}\p{Zl}\p{Zp}\p{Zs}]|[.\u{0}\p{Zl}\p{Zp}\p{Zs}]$|^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?=\.|$)/gui
-                let sanitisedMeetingTitle = "Meeting"
-                if (meeting.meetingTitle) {
-                    sanitisedMeetingTitle = meeting.meetingTitle.replaceAll(invalidFilenameRegex, "_")
-                }
-                else if (meeting.title) {
-                    sanitisedMeetingTitle = meeting.title.replaceAll(invalidFilenameRegex, "_")
-                }
+                chrome.storage.sync.get(["captionLanguage"], function (resultSyncLang) {
+                    const language = resultSyncLang.captionLanguage || "en"
 
-                // Format timestamp for human-readable filename and sanitise to prevent invalid filenames
-                const timestamp = new Date(meeting.meetingStartTimestamp)
-                const formattedTimestamp = timestamp.toLocaleString("default", timeFormat).replace(/[\/:]/g, "-")
+                    const fileName = generateMdFilename(meeting)
+                    const content = generateMdContent(meeting, language)
 
-                const prefix = meeting.meetingSoftware ? `${meeting.meetingSoftware} transcript` : "Transcript"
+                    const blob = new Blob([content], { type: "text/markdown" })
 
-                const fileName = `TranscripTonic/${prefix}-${sanitisedMeetingTitle} at ${formattedTimestamp} on.txt`
+                    // Read the blob as a data URL
+                    const reader = new FileReader()
 
+                    // Read the blob
+                    reader.readAsDataURL(blob)
 
-                // Format transcript and chatMessages content
-                let content = getTranscriptString(meeting.transcript)
-                content += `\n\n---------------\nCHAT MESSAGES\n---------------\n\n`
-                content += getChatMessagesString(meeting.chatMessages)
+                    // Download as markdown file, once blob is read
+                    reader.onload = function (event) {
+                        if (event.target?.result) {
+                            const dataUrl = event.target.result
 
-                // Add branding
-                content += "\n\n---------------\n"
-                content += "Transcript saved using TranscripTonic Chrome extension (https://chromewebstore.google.com/detail/ciepnfnceimjehngolkijpnbappkkiag)"
-                content += "\n---------------"
-
-                const blob = new Blob([content], { type: "text/plain" })
-
-                // Read the blob as a data URL
-                const reader = new FileReader()
-
-                // Read the blob
-                reader.readAsDataURL(blob)
-
-                // Download as text file, once blob is read
-                reader.onload = function (event) {
-                    if (event.target?.result) {
-                        const dataUrl = event.target.result
-
-                        // Create a download with Chrome Download API
-                        chrome.downloads.download({
-                            // @ts-ignore
-                            url: dataUrl,
-                            filename: fileName,
-                            conflictAction: "uniquify"
-                        }).then(() => {
-                            console.log("Transcript downloaded")
-                            resolve("Transcript downloaded successfully")
-
-                            // Increment anonymous transcript generated count to a Google sheet
-                            fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
-                                mode: "no-cors"
-                            })
-                        }).catch((err) => {
-                            console.error(err)
+                            // Create a download with Chrome Download API
                             chrome.downloads.download({
                                 // @ts-ignore
                                 url: dataUrl,
-                                filename: "TranscripTonic/Transcript.txt",
+                                filename: fileName,
                                 conflictAction: "uniquify"
-                            })
-                            console.log("Invalid file name. Transcript downloaded to TranscripTonic directory with simple file name.")
-                            resolve("Transcript downloaded successfully with default file name")
+                            }).then(() => {
+                                console.log("Transcript downloaded")
+                                resolve("Transcript downloaded successfully")
 
-                            // Logs anonymous errors to a Google sheet for swift debugging   
-                            fetch(`https://script.google.com/macros/s/AKfycbwN-bVkVv3YX4qvrEVwG9oSup0eEd3R22kgKahsQ3bCTzlXfRuaiO7sUVzH9ONfhL4wbA/exec?version=${chrome.runtime.getManifest().version}&code=009&error=${encodeURIComponent(err)}&meetingSoftware=${meeting.meetingSoftware}`, { mode: "no-cors" })
+                                // Increment anonymous transcript generated count to a Google sheet
+                                fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
+                                    mode: "no-cors"
+                                })
+                            }).catch((err) => {
+                                console.error(err)
+                                chrome.downloads.download({
+                                    // @ts-ignore
+                                    url: dataUrl,
+                                    filename: "meet-to-md/Meeting.md",
+                                    conflictAction: "uniquify"
+                                })
+                                console.log("Invalid file name. Transcript downloaded to meet-to-md directory with simple file name.")
+                                resolve("Transcript downloaded successfully with default file name")
 
-                            // Increment anonymous transcript generated count to a Google sheet
-                            fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
-                                mode: "no-cors"
+                                // Logs anonymous errors to a Google sheet for swift debugging
+                                fetch(`https://script.google.com/macros/s/AKfycbwN-bVkVv3YX4qvrEVwG9oSup0eEd3R22kgKahsQ3bCTzlXfRuaiO7sUVzH9ONfhL4wbA/exec?version=${chrome.runtime.getManifest().version}&code=009&error=${encodeURIComponent(err)}&meetingSoftware=${meeting.meetingSoftware}`, { mode: "no-cors" })
+
+                                // Increment anonymous transcript generated count to a Google sheet
+                                fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
+                                    mode: "no-cors"
+                                })
                             })
-                        })
+                        }
+                        else {
+                            reject({ errorCode: "009", errorMessage: "Failed to read blob" })
+                        }
                     }
-                    else {
-                        reject({ errorCode: "009", errorMessage: "Failed to read blob" })
-                    }
-                }
+                })
             }
             else {
                 reject({ errorCode: "010", errorMessage: "Meeting at specified index not found" })
