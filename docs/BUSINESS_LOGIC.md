@@ -112,29 +112,13 @@ source: Google Meet captions
 
 ---
 
-### Obsidian Folder (File System Access API)
-**Purpose:** Let the user choose their Obsidian vault folder so MD files are saved directly there instead of Downloads.
-
-**What the user can do:**
-- Click "Choose folder" in the popup to select any folder via the system file picker
-- Selected folder name is displayed in the popup with a folder icon
-- If no folder is selected, files go to the Downloads folder as before
+### File Output Location
+**Purpose:** MD files are always saved to a predictable location.
 
 **Business rules:**
-- `FileSystemDirectoryHandle` stored in IndexedDB (not JSON-serializable, cannot use `chrome.storage`)
-- IndexedDB database: `meet-to-md-storage`, object store: `folder-handles`, key: `obsidian-folder`
-- On meeting end, `downloadTranscript()` attempts to use saved handle:
-  1. Reads handle from IndexedDB via `getFolderHandle()`
-  2. Calls `handle.queryPermission({ mode: "readwrite" })`
-  3. If `"granted"` → writes file directly to folder via `writeToObsidianFolder()` (filename without `meet-to-md/` prefix)
-  4. If `"prompt"` (permission revoked after browser restart) → sends `request_folder_permission` message to popup
-     - If popup is open: popup reads handle from IndexedDB, calls `handle.requestPermission({ mode: "readwrite" })` which shows browser permission dialog. Responds `{ granted: true/false }`.
-     - If popup is closed: message has no receiver — 5-second timeout triggers fallback
-  5. If no handle, permission denied, or timeout → falls back to `chrome.downloads` (file goes to `meet-to-md/` subfolder in Downloads)
-- The popup context uses inline IndexedDB helpers (cannot use `importScripts` outside service worker)
-- The `requestPermission()` call requires a user gesture context (browser window) — this is why the popup must handle it, not the service worker
-
-**Connections:** `popup.js` saves handle → IndexedDB ← `background.js` reads handle → writes file or asks popup for permission → falls back to `chrome.downloads`
+- MD files are always saved to `Downloads/meet-to-md/` via `chrome.downloads` API
+- Users can set up OS-level automation (macOS Automator, Folder Actions, Hazel, etc.) to move files from `Downloads/meet-to-md/` to their Obsidian vault
+- File System Access API was evaluated and removed — it required the popup to be open when the meeting ends for permission re-authorization after browser restart, which is a fragile UX requirement
 
 ---
 

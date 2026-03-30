@@ -4,8 +4,7 @@
 
 // @ts-ignore
 importScripts('export/md-generator.js')
-// @ts-ignore
-importScripts('storage/folder-storage.js')
+
 
 /** @type {Intl.DateTimeFormatOptions} */
 const timeFormat = {
@@ -37,26 +36,6 @@ const PLATFORM_CONFIGS = {
         excludeMatches: []
     }
 }
-
-/**
- * Writes content to a file in the saved Obsidian folder.
- * Returns a promise that resolves with true on success, false on failure.
- * @param {FileSystemDirectoryHandle} handle
- * @param {string} filename - just the filename, no path prefix
- * @param {string} content
- * @returns {Promise<boolean>}
- */
-function writeToObsidianFolder(handle, filename, content) {
-    return handle.getFileHandle(filename, { create: true })
-        .then(fileHandle => fileHandle.createWritable())
-        .then(writable => writable.write(content).then(() => writable.close()))
-        .then(() => true)
-        .catch(err => {
-            console.error("Failed to write to Obsidian folder:", err)
-            return false
-        })
-}
-
 
 chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendResponse) {
     const message = /** @type {ExtensionMessage} */ (messageUnTyped)
@@ -463,90 +442,46 @@ function downloadTranscript(index, isWebhookEnabled) {
                     const fileName = generateMdFilename(meeting)
                     const content = generateMdContent(meeting, language)
 
-                    // Try to save directly to the Obsidian folder via File System Access API
-                    getFolderHandle()
-                        .then(handle => {
-                            if (!handle) {
-                                throw new Error("No folder handle saved")
-                            }
-                            return handle.queryPermission({ mode: "readwrite" }).then(permission => {
-                                if (permission === "granted") {
-                                    // Permission already active — write directly
-                                    return { handle, alreadyGranted: true }
-                                }
-                                // Permission needs user gesture — ask popup to request it
-                                return new Promise((res) => {
-                                    chrome.runtime.sendMessage(
-                                        { type: "request_folder_permission" },
-                                        (response) => {
-                                            if (chrome.runtime.lastError || !response || !response.granted) {
-                                                res({ handle: null, alreadyGranted: false })
-                                            } else {
-                                                res({ handle, alreadyGranted: false })
-                                            }
-                                        }
-                                    )
-                                    // If popup is not open, sendMessage never calls back — timeout after 5s
-                                    setTimeout(() => res({ handle: null, alreadyGranted: false }), 5000)
+                    const blob = new Blob([content], { type: "text/markdown" })
+                    const reader = new FileReader()
+                    reader.readAsDataURL(blob)
+                    reader.onload = function (event) {
+                        if (event.target?.result) {
+                            const dataUrl = event.target.result
+                            chrome.downloads.download({
+                                // @ts-ignore
+                                url: dataUrl,
+                                filename: fileName,
+                                conflictAction: "uniquify"
+                            }).then(() => {
+                                console.log("Transcript downloaded")
+                                resolve("Transcript downloaded successfully")
+
+                                fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
+                                    mode: "no-cors"
                                 })
-                            })
-                        })
-                        .then(({ handle, alreadyGranted }) => {
-                            if (!handle) {
-                                throw new Error("Could not obtain folder permission")
-                            }
-                            const justFilename = fileName.replace(/^meet-to-md\//, "")
-                            return writeToObsidianFolder(handle, justFilename, content).then(success => {
-                                if (!success) throw new Error("Write to folder failed")
-                                console.log("MD file saved to Obsidian folder:", justFilename)
-                                resolve("Transcript saved to Obsidian folder successfully")
+                            }).catch((err) => {
+                                console.error(err)
+                                chrome.downloads.download({
+                                    // @ts-ignore
+                                    url: dataUrl,
+                                    filename: "meet-to-md/Meeting.md",
+                                    conflictAction: "uniquify"
+                                })
+                                console.log("Invalid file name. Transcript downloaded to meet-to-md directory with simple file name.")
+                                resolve("Transcript downloaded successfully with default file name")
+
+                                fetch(`https://script.google.com/macros/s/AKfycbwN-bVkVv3YX4qvrEVwG9oSup0eEd3R22kgKahsQ3bCTzlXfRuaiO7sUVzH9ONfhL4wbA/exec?version=${chrome.runtime.getManifest().version}&code=009&error=${encodeURIComponent(err)}&meetingSoftware=${meeting.meetingSoftware}`, { mode: "no-cors" })
+
                                 fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
                                     mode: "no-cors"
                                 })
                             })
-                        })
-                        .catch(err => {
-                            // Fallback: use chrome.downloads (original behavior)
-                            console.log("Falling back to chrome.downloads:", err.message)
-
-                            const blob = new Blob([content], { type: "text/markdown" })
-                            const reader = new FileReader()
-                            reader.readAsDataURL(blob)
-                            reader.onload = function (event) {
-                                if (event.target?.result) {
-                                    const dataUrl = event.target.result
-                                    chrome.downloads.download({
-                                        // @ts-ignore
-                                        url: dataUrl,
-                                        filename: fileName,
-                                        conflictAction: "uniquify"
-                                    }).then(() => {
-                                        console.log("Transcript downloaded to Downloads folder (fallback)")
-                                        resolve("Transcript downloaded successfully (fallback)")
-
-                                        fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
-                                            mode: "no-cors"
-                                        })
-                                    }).catch(dlErr => {
-                                        chrome.downloads.download({
-                                            // @ts-ignore
-                                            url: dataUrl,
-                                            filename: "meet-to-md/Meeting.md",
-                                            conflictAction: "uniquify"
-                                        })
-                                        resolve("Transcript downloaded with default filename (fallback)")
-
-                                        fetch(`https://script.google.com/macros/s/AKfycbwN-bVkVv3YX4qvrEVwG9oSup0eEd3R22kgKahsQ3bCTzlXfRuaiO7sUVzH9ONfhL4wbA/exec?version=${chrome.runtime.getManifest().version}&code=009&error=${encodeURIComponent(dlErr)}&meetingSoftware=${meeting.meetingSoftware}`, { mode: "no-cors" })
-
-                                        fetch(`https://script.google.com/macros/s/AKfycbxgUPDKDfreh2JIs8pIC-9AyQJxq1lx9Q1qI2SVBjJRvXQrYCPD2jjnBVQmds2mYeD5nA/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meeting.meetingSoftware}`, {
-                                            mode: "no-cors"
-                                        })
-                                    })
-                                } else {
-                                    reject({ errorCode: "009", errorMessage: "Failed to read blob" })
-                                }
-                            }
-                        })
+                        }
+                        else {
+                            reject({ errorCode: "009", errorMessage: "Failed to read blob" })
+                        }
+                    }
                 })
             }
             else {

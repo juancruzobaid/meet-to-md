@@ -4,9 +4,9 @@
 A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
 
 ## Current Project Status
-**Phase:** Phase 2 completed — Obsidian folder picker
+**Phase:** Phase 1 completed — MD export + language toggle
 **Last Update:** 2026-03-29
-**Features running:** MD export with YAML frontmatter, Obsidian folder picker, EN/ES language toggle, auto/manual mode, webhooks, meeting history
+**Features running:** MD export with YAML frontmatter (saves to Downloads/meet-to-md/), EN/ES language toggle, auto/manual mode, webhooks, meeting history
 
 ## Feature Roadmap
 
@@ -53,16 +53,6 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Main Files:** `extension/background.js` → `downloadTranscript()`
 - **Completed:** 2026-03-29
 
-#### File System Access API
-- **Description:** User picks Obsidian vault folder via `showDirectoryPicker()`. Handle saved to IndexedDB. `downloadTranscript()` writes directly to folder when permission granted.
-- **Main Files:** `extension/storage/folder-storage.js`, `extension/popup.html`, `extension/popup.js`, `extension/background.js`
-- **Completed:** 2026-03-29
-
-#### chrome.downloads fallback
-- **Description:** When no folder handle saved or permission revoked, falls back to `chrome.downloads` API (file goes to `meet-to-md/` in Downloads).
-- **Main Files:** `extension/background.js` → `downloadTranscript()`
-- **Completed:** 2026-03-29
-
 #### EN/ES toggle in popup
 - **Description:** Prominent EN/ES toggle in popup UI. Saves `captionLanguage` to `chrome.storage.sync`. Active button highlighted, persists across sessions.
 - **Main Files:** `extension/popup.html`, `extension/popup.js`
@@ -74,6 +64,12 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 
 #### Medium Priority
 - [ ] **Language switcher content script:** Trigger Meet caption language change via DOM interaction.
+
+### ❌ DECIDED AGAINST
+
+#### File System Access API — Obsidian folder picker
+- **Reason:** Requires the popup to be open when the meeting ends for permission re-authorization after browser restart. Fragile UX that doesn't fit how the extension works. Files always save to `Downloads/meet-to-md/` via `chrome.downloads`. Users can set up OS-level automation to move files to their Obsidian vault.
+- **Implemented then reverted:** 2026-03-29
 
 #### Low Priority / Nice to Have
 - [ ] **MEET-DOM.md:** Document Meet language settings DOM selectors for the language switcher.

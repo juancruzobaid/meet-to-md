@@ -44,6 +44,25 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Remove File System Access API, revert to chrome.downloads
+
+**Task received:** Clean up folder picker — always save to Downloads/meet-to-md/
+
+**Files deleted:**
+- `extension/storage/folder-storage.js`
+
+**Files modified:**
+- `extension/background.js` — removed importScripts folder-storage, writeToObsidianFolder helper, and getFolderHandle permission flow. Restored clean chrome.downloads logic.
+- `extension/popup.html` — removed folder picker section, updated description text to show Downloads/meet-to-md/
+- `extension/popup.js` — removed all folder picker logic (IndexedDB helpers, showDirectoryPicker, folder name display) and request_folder_permission message listener
+
+**Final result:** Extension always saves to Downloads/meet-to-md/. No File System Access API. Popup is clean.
+
+**Business Logic updated:** Yes — replaced Obsidian Folder section with simple note
+**Master Plan updated:** Yes — folder picker moved to "Decided against"
+
+---
+
 ### 2026-03-29 — Fix folder permission recovery via popup message
 
 **Task received:** Fix permission flow when browser restart revokes File System Access API permission. Service worker sends message to popup to request permission from user.
