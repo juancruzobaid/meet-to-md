@@ -95,20 +95,25 @@ source: Google Meet captions
 ---
 
 ### Language Setting (popup UI)
-**Purpose:** Let the user set the caption language before or during a meeting.
+**Purpose:** Let the user set a default caption language and override it per meeting.
 
 **What the user can do:**
-- Toggle between EN and ES using two prominent buttons in the popup
-- Selected language persists across popup opens and browser sessions
+- Set a **default language** (EN/ES) that persists forever
+- Set a **meeting language** (EN/ES) that applies to the current/next meeting
+- Meeting language automatically resets to default when a new meeting starts
 
 **Business rules:**
-- Language stored in `chrome.storage.sync` key `captionLanguage`
-- Default value is `"en"` if not set
+- Two storage keys replace the old `captionLanguage`:
+  - `defaultLanguage` — user's preferred language, persists forever. Default: `"en"`
+  - `meetingLanguage` — language for the current/next meeting. Default: falls back to `defaultLanguage`
+- When `background.js` receives `new_meeting_started`, it resets `meetingLanguage` to `defaultLanguage`
 - The active button is highlighted with filled background (`#2A9ACA`), inactive is outlined
-- The selected language is used in the MD YAML frontmatter (`language:` field)
+- Popup shows two rows: "Default" and "This meeting", each with EN/ES buttons
+- The `meetingLanguage` value is used in the MD YAML frontmatter (`language:` field)
 - This toggle does NOT change Meet's caption language via DOM — the user must still set Meet's CC language manually in Meet settings
+- Migration: users with old `captionLanguage` key are unaffected — `downloadTranscript` falls back to `defaultLanguage` then `"en"`
 
-**Connections:** `chrome.storage.sync.captionLanguage` → read by `background.js` → passed to `generateMdContent()` in `md-generator.js`
+**Connections:** `chrome.storage.sync.meetingLanguage` → read by `background.js` → passed to `generateMdContent()` in `md-generator.js`. `background.js` resets `meetingLanguage` on `new_meeting_started`.
 
 ---
 

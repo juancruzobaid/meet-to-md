@@ -99,35 +99,62 @@ window.onload = function () {
     syncPlatformStatus(zoomToggle, "zoom")
   }
 
-  // Language toggle
-  const langEnBtn = document.querySelector("#lang-en")
-  const langEsBtn = document.querySelector("#lang-es")
+  // Language toggles — Default and Meeting
+  const defaultLangEnBtn = document.querySelector("#default-lang-en")
+  const defaultLangEsBtn = document.querySelector("#default-lang-es")
+  const meetingLangEnBtn = document.querySelector("#meeting-lang-en")
+  const meetingLangEsBtn = document.querySelector("#meeting-lang-es")
 
-  function setActiveLanguage(lang) {
-    if (langEnBtn instanceof HTMLButtonElement && langEsBtn instanceof HTMLButtonElement) {
-      langEnBtn.classList.toggle("active", lang === "en")
-      langEsBtn.classList.toggle("active", lang === "es")
+  function setActiveDefaultLanguage(lang) {
+    if (defaultLangEnBtn instanceof HTMLButtonElement && defaultLangEsBtn instanceof HTMLButtonElement) {
+      defaultLangEnBtn.classList.toggle("active", lang === "en")
+      defaultLangEsBtn.classList.toggle("active", lang === "es")
     }
   }
 
-  // Load saved language on popup open, default to "en"
-  chrome.storage.sync.get(["captionLanguage"], function (result) {
-    setActiveLanguage(result.captionLanguage || "en")
+  function setActiveMeetingLanguage(lang) {
+    if (meetingLangEnBtn instanceof HTMLButtonElement && meetingLangEsBtn instanceof HTMLButtonElement) {
+      meetingLangEnBtn.classList.toggle("active", lang === "en")
+      meetingLangEsBtn.classList.toggle("active", lang === "es")
+    }
+  }
+
+  // Load saved languages on popup open
+  chrome.storage.sync.get(["defaultLanguage", "meetingLanguage"], function (result) {
+    const defaultLang = result.defaultLanguage || "en"
+    const meetingLang = result.meetingLanguage || defaultLang
+    setActiveDefaultLanguage(defaultLang)
+    setActiveMeetingLanguage(meetingLang)
   })
 
-  // Save language on click
-  if (langEnBtn instanceof HTMLButtonElement) {
-    langEnBtn.addEventListener("click", function () {
-      chrome.storage.sync.set({ captionLanguage: "en" }, function () {
-        setActiveLanguage("en")
+  // Default language buttons
+  if (defaultLangEnBtn instanceof HTMLButtonElement) {
+    defaultLangEnBtn.addEventListener("click", function () {
+      chrome.storage.sync.set({ defaultLanguage: "en" }, function () {
+        setActiveDefaultLanguage("en")
+      })
+    })
+  }
+  if (defaultLangEsBtn instanceof HTMLButtonElement) {
+    defaultLangEsBtn.addEventListener("click", function () {
+      chrome.storage.sync.set({ defaultLanguage: "es" }, function () {
+        setActiveDefaultLanguage("es")
       })
     })
   }
 
-  if (langEsBtn instanceof HTMLButtonElement) {
-    langEsBtn.addEventListener("click", function () {
-      chrome.storage.sync.set({ captionLanguage: "es" }, function () {
-        setActiveLanguage("es")
+  // Meeting language buttons
+  if (meetingLangEnBtn instanceof HTMLButtonElement) {
+    meetingLangEnBtn.addEventListener("click", function () {
+      chrome.storage.sync.set({ meetingLanguage: "en" }, function () {
+        setActiveMeetingLanguage("en")
+      })
+    })
+  }
+  if (meetingLangEsBtn instanceof HTMLButtonElement) {
+    meetingLangEsBtn.addEventListener("click", function () {
+      chrome.storage.sync.set({ meetingLanguage: "es" }, function () {
+        setActiveMeetingLanguage("es")
       })
     })
   }

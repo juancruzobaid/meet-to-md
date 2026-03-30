@@ -44,6 +44,29 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Split language into defaultLanguage + meetingLanguage with auto-reset
+
+**Task received:** Split the single `captionLanguage` setting into `defaultLanguage` (persists forever) and `meetingLanguage` (resets to default at each new meeting start). Update popup UI to show both rows. MD frontmatter uses `meetingLanguage`.
+
+**Files modified:**
+- `extension/background.js` — Added `meetingLanguage` reset to `defaultLanguage` in `new_meeting_started` handler. Changed `downloadTranscript()` to read `meetingLanguage`/`defaultLanguage` instead of `captionLanguage`.
+- `extension/popup.html` — Replaced single language toggle with two rows: "Default" and "This meeting", each with EN/ES buttons. Added explanatory sub-text about auto-reset.
+- `extension/popup.js` — Replaced single language toggle logic with `defaultLanguage` and `meetingLanguage` toggle logic (separate buttons, separate storage keys, separate UI update functions).
+
+**Tests performed:**
+- Code review of `new_meeting_started` reset logic ✅
+- Verified `downloadTranscript` fallback chain: `meetingLanguage` → `defaultLanguage` → `"en"` ✅
+- Verified popup loads both saved languages correctly on open ✅
+- Verified backward compatibility: old `captionLanguage` users unaffected ✅
+
+**Final result:** Popup shows two language rows. "This meeting" resets to "Default" at each new meeting start. MD frontmatter uses the meeting language.
+
+**Business Logic updated:** Yes — Language Setting section rewritten with defaultLanguage/meetingLanguage behavior
+**Master Plan updated:** No — no new feature category, just an enhancement to existing Language Setting
+**PROJECT_CONTEXT updated:** Yes — Settings storage section updated (captionLanguage → defaultLanguage + meetingLanguage + hideCaptions)
+
+---
+
 ### 2026-03-29 — Add silent mode — hide captions overlay while keeping capture running
 
 **Task received:** Add toggle to popup to hide Meet captions overlay. Default ON (hidden). Capture continues via MutationObserver regardless.

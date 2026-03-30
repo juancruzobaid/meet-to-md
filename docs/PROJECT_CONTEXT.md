@@ -83,8 +83,9 @@ language-switcher.js            ← NEW — triggers Meet language change via DO
   webhookUrl: string,
   autoPostWebhookAfterMeeting: boolean,
   webhookBodyType: "simple" | "advanced",
-  captionLanguage: "en" | "es",    // NEW — our addition
-  obsidianFolder: FileSystemDirectoryHandle | null  // NEW — our addition
+  defaultLanguage: "en" | "es",     // NEW — persists forever
+  meetingLanguage: "en" | "es",     // NEW — resets to defaultLanguage on new meeting
+  hideCaptions: boolean             // NEW — silent mode (default true)
 }
 ```
 

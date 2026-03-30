@@ -273,12 +273,28 @@
     </div>
 
     <div class="get-started">
-      <p style="margin-bottom: 0.5rem;"><b>Transcript language</b></p>
-      <div class="language-toggle">
-        <button class="lang-btn" id="lang-en" data-lang="en">EN</button>
-        <button class="lang-btn" id="lang-es" data-lang="es">ES</button>
+      <p style="margin-bottom: 0.75rem;"><b>Transcript language</b></p>
+
+      <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="min-width: 80px; color: #a0a0a0; font-size: 0.8rem;">Default</span>
+          <div class="language-toggle">
+            <button class="lang-btn" id="default-lang-en" data-lang="en">EN</button>
+            <button class="lang-btn" id="default-lang-es" data-lang="es">ES</button>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="min-width: 80px; color: #C0C0C0; font-size: 0.8rem;">This meeting</span>
+          <div class="language-toggle">
+            <button class="lang-btn" id="meeting-lang-en" data-lang="en">EN</button>
+            <button class="lang-btn" id="meeting-lang-es" data-lang="es">ES</button>
+          </div>
+        </div>
       </div>
-      <p class="sub-text" style="margin-top: 0.5rem;">Match this to your Google Meet captions language</p>
+      <p class="sub-text" style="margin-top: 0.6rem; font-size: 0.75rem;">
+        "This meeting" resets to default at the start of each new meeting.
+        Match it to your Google Meet captions language.
+      </p>
 
       <hr class="divider" />
 

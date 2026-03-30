@@ -49,6 +49,13 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
                 console.log("Meeting tab id saved")
             })
         })
+        // Reset meeting language to default at the start of each new meeting
+        chrome.storage.sync.get(["defaultLanguage"], function (result) {
+            const defaultLang = result.defaultLanguage || "en"
+            chrome.storage.sync.set({ meetingLanguage: defaultLang }, function () {
+                console.log("Meeting language reset to default:", defaultLang)
+            })
+        })
     }
 
     if (message.type === "meeting_ended") {
@@ -436,8 +443,8 @@ function downloadTranscript(index, isWebhookEnabled) {
             if (resultLocal.meetings && resultLocal.meetings[index]) {
                 const meeting = resultLocal.meetings[index]
 
-                chrome.storage.sync.get(["captionLanguage"], function (resultSyncLang) {
-                    const language = resultSyncLang.captionLanguage || "en"
+                chrome.storage.sync.get(["meetingLanguage", "defaultLanguage"], function (resultSyncLang) {
+                    const language = resultSyncLang.meetingLanguage || resultSyncLang.defaultLanguage || "en"
 
                     const fileName = generateMdFilename(meeting)
                     const content = generateMdContent(meeting, language)
