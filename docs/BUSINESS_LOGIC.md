@@ -112,6 +112,28 @@ source: Google Meet captions
 
 ---
 
+### Obsidian Folder (File System Access API)
+**Purpose:** Let the user choose their Obsidian vault folder so MD files are saved directly there instead of Downloads.
+
+**What the user can do:**
+- Click "Choose folder" in the popup to select any folder via the system file picker
+- Selected folder name is displayed in the popup with a folder icon
+- If no folder is selected, files go to the Downloads folder as before
+
+**Business rules:**
+- `FileSystemDirectoryHandle` stored in IndexedDB (not JSON-serializable, cannot use `chrome.storage`)
+- IndexedDB database: `meet-to-md-storage`, object store: `folder-handles`, key: `obsidian-folder`
+- On meeting end, `downloadTranscript()` attempts to use saved handle:
+  1. Reads handle from IndexedDB via `getFolderHandle()`
+  2. Calls `handle.queryPermission({ mode: "readwrite" })` — permission may be revoked by Chrome after browser restart
+  3. If `"granted"` → writes file directly to folder (filename without `meet-to-md/` prefix)
+  4. If permission lost or no handle → falls back to `chrome.downloads` (file goes to `meet-to-md/` subfolder in Downloads)
+- The popup context uses inline IndexedDB helpers (cannot use `importScripts` outside service worker)
+
+**Connections:** `popup.js` saves handle → IndexedDB ← `background.js` reads handle → writes file or falls back to `chrome.downloads`
+
+---
+
 ### Webhook Integration (upstream)
 **Purpose:** Post transcript data to an external URL after each meeting.
 

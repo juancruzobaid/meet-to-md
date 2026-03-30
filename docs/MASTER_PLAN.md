@@ -4,9 +4,9 @@
 A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
 
 ## Current Project Status
-**Phase:** Phase 1 completed — MD export + language toggle
+**Phase:** Phase 2 completed — Obsidian folder picker
 **Last Update:** 2026-03-29
-**Features running:** MD export with YAML frontmatter, EN/ES language toggle, auto/manual mode, webhooks, meeting history
+**Features running:** MD export with YAML frontmatter, Obsidian folder picker, EN/ES language toggle, auto/manual mode, webhooks, meeting history
 
 ## Feature Roadmap
 
@@ -53,11 +53,15 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Main Files:** `extension/background.js` → `downloadTranscript()`
 - **Completed:** 2026-03-29
 
-### 📋 PRIORITIZED BACKLOG
+#### File System Access API
+- **Description:** User picks Obsidian vault folder via `showDirectoryPicker()`. Handle saved to IndexedDB. `downloadTranscript()` writes directly to folder when permission granted.
+- **Main Files:** `extension/storage/folder-storage.js`, `extension/popup.html`, `extension/popup.js`, `extension/background.js`
+- **Completed:** 2026-03-29
 
-#### High Priority
-- [ ] **File System Access API:** Let user pick destination folder (Obsidian vault). Add folder picker to settings. Persist handle across sessions.
-- [ ] **chrome.downloads fallback:** If File System Access API is unavailable, fall back to current download method.
+#### chrome.downloads fallback
+- **Description:** When no folder handle saved or permission revoked, falls back to `chrome.downloads` API (file goes to `meet-to-md/` in Downloads).
+- **Main Files:** `extension/background.js` → `downloadTranscript()`
+- **Completed:** 2026-03-29
 
 #### EN/ES toggle in popup
 - **Description:** Prominent EN/ES toggle in popup UI. Saves `captionLanguage` to `chrome.storage.sync`. Active button highlighted, persists across sessions.

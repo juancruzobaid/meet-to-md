@@ -44,6 +44,32 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Add Obsidian folder picker with File System Access API
+
+**Task received:** Add folder picker to popup. Save FileSystemDirectoryHandle to IndexedDB. Write MD files directly to selected folder. Fall back to chrome.downloads if permission lost.
+
+**Files created:**
+- `extension/storage/folder-storage.js` — IndexedDB wrapper: `openFolderDb()`, `saveFolderHandle()`, `getFolderHandle()`, `clearFolderHandle()`
+
+**Files modified:**
+- `extension/popup.html` — Added Obsidian vault folder picker section between language toggle and webhooks
+- `extension/popup.js` — Added folder picker logic: IndexedDB read/write from popup context, showDirectoryPicker on click, display folder name
+- `extension/background.js` — importScripts folder-storage.js, replaced download logic with File System Access API (try folder handle → queryPermission → write file) with chrome.downloads fallback
+
+**Tests performed:**
+- Code review of IndexedDB handle persistence flow ✅
+- Verified fallback to chrome.downloads when no handle saved ✅
+- Verified filename extraction strips `meet-to-md/` prefix for direct folder write ✅
+
+**Final result:** Popup shows "Choose folder" button. Selected folder persists via IndexedDB. MD files written directly to Obsidian vault when permission granted. Falls back to Downloads otherwise.
+
+**Business Logic updated:** Yes — added Obsidian Folder module
+**Master Plan updated:** Yes — File System Access API and chrome.downloads fallback moved to Completed
+
+**Next step:** Manual validation in Chrome with real Obsidian vault folder
+
+---
+
 ### 2026-03-29 — Add EN/ES language toggle to popup
 
 **Task received:** Issues #9 and #10 — Language toggle UI in popup + save to storage

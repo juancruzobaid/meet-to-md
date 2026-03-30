@@ -132,6 +132,79 @@ window.onload = function () {
     })
   }
 
+  // Folder picker
+  const chooseFolderBtn = document.querySelector("#choose-folder-btn")
+  const folderNameSpan = document.querySelector("#folder-name")
+
+  // IndexedDB helpers for popup context (folder-storage.js is for service worker via importScripts)
+  function getHandleFromPopup() {
+      return new Promise((resolve) => {
+          const request = indexedDB.open("meet-to-md-storage", 1)
+          request.onupgradeneeded = function(e) {
+              const db = e.target.result
+              if (!db.objectStoreNames.contains("folder-handles")) {
+                  db.createObjectStore("folder-handles")
+              }
+          }
+          request.onsuccess = function(e) {
+              const db = e.target.result
+              const tx = db.transaction("folder-handles", "readonly")
+              const store = tx.objectStore("folder-handles")
+              const getReq = store.get("obsidian-folder")
+              getReq.onsuccess = function(e) { resolve(e.target.result || null) }
+              getReq.onerror = function() { resolve(null) }
+          }
+          request.onerror = function() { resolve(null) }
+      })
+  }
+
+  function saveHandleFromPopup(handle) {
+      return new Promise((resolve) => {
+          const request = indexedDB.open("meet-to-md-storage", 1)
+          request.onupgradeneeded = function(e) {
+              const db = e.target.result
+              if (!db.objectStoreNames.contains("folder-handles")) {
+                  db.createObjectStore("folder-handles")
+              }
+          }
+          request.onsuccess = function(e) {
+              const db = e.target.result
+              const tx = db.transaction("folder-handles", "readwrite")
+              const store = tx.objectStore("folder-handles")
+              store.put(handle, "obsidian-folder")
+              tx.oncomplete = () => resolve()
+              tx.onerror = () => resolve()
+          }
+          request.onerror = function() { resolve() }
+      })
+  }
+
+  // Load folder name on popup open
+  getHandleFromPopup().then(handle => {
+      if (handle && folderNameSpan) {
+          folderNameSpan.textContent = "\u{1F4C1} " + handle.name
+      } else if (folderNameSpan) {
+          folderNameSpan.textContent = "No folder selected \u2014 using Downloads"
+      }
+  })
+
+  // Choose folder on click
+  if (chooseFolderBtn instanceof HTMLButtonElement) {
+      chooseFolderBtn.addEventListener("click", async function () {
+          try {
+              // @ts-ignore — showDirectoryPicker is not in all TS defs
+              const handle = await window.showDirectoryPicker({ mode: "readwrite" })
+              await saveHandleFromPopup(handle)
+              if (folderNameSpan) {
+                  folderNameSpan.textContent = "\u{1F4C1} " + handle.name
+              }
+          } catch (err) {
+              // User cancelled or permission denied — do nothing
+              console.log("Folder picker cancelled or failed:", err)
+          }
+      })
+  }
+
   // notice?.addEventListener("click", () => {
   //   alert("The transcript may not always be accurate and is only intended to aid in improving productivity. It is the responsibility of the user to ensure they comply with any applicable laws/rules.")
   // })
