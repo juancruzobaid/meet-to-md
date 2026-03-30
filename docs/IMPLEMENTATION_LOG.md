@@ -44,6 +44,25 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Revert silent mode — CSS display:none breaks MutationObserver
+
+**Task received:** Remove silent mode feature — `display:none` on `.a4cQT` breaks transcript capture.
+
+**Root cause:** `display: none` on `.a4cQT` causes Meet to stop updating the captions DOM, so MutationObserver receives no mutations and transcript stays empty.
+
+**Files modified:**
+- `extension/content-google-meet.js` — removed `applyCaptionVisibility()`, `hideCaptions` storage read, `chrome.storage.onChanged` listener
+- `extension/popup.html` — removed silent mode toggle, divider, and `.switch`/`.slider` CSS
+- `extension/popup.js` — removed `hideCaptions` toggle logic
+
+**Final result:** Captions are always visible during meeting. Transcript capture works correctly.
+
+**Business Logic updated:** Yes — Silent Mode section removed
+**Master Plan updated:** Yes — Silent mode moved to "Decided against"
+**PROJECT_CONTEXT updated:** Yes — removed `hideCaptions` from storage keys
+
+---
+
 ### 2026-03-29 — Split language into defaultLanguage + meetingLanguage with auto-reset
 
 **Task received:** Split the single `captionLanguage` setting into `defaultLanguage` (persists forever) and `meetingLanguage` (resets to default at each new meeting start). Update popup UI to show both rows. MD frontmatter uses `meetingLanguage`.

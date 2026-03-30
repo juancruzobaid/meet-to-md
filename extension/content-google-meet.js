@@ -172,7 +172,7 @@ function meetingRoutines(uiType) {
       const captionsButton = selectElements(captionsIconData.selector, captionsIconData.text)[0]
 
       // Click captions icon for non manual operation modes. Async operation.
-      chrome.storage.sync.get(["operationMode", "hideCaptions"], function (resultSyncUntyped) {
+      chrome.storage.sync.get(["operationMode"], function (resultSyncUntyped) {
         const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
         if (resultSync.operationMode === "manual") {
           console.log("Manual mode selected, leaving transcript off")
@@ -180,12 +180,6 @@ function meetingRoutines(uiType) {
         else {
           captionsButton.click()
         }
-
-        // Hide captions overlay if hideCaptions is true (default true)
-        // Small delay to let Meet render the captions container first
-        setTimeout(() => {
-          applyCaptionVisibility(resultSync.hideCaptions !== false)
-        }, 1000)
       })
 
       // Allow DOM to be updated and then register transcript mutation observer
@@ -474,29 +468,6 @@ function pushUniqueChatBlock(chatBlock) {
     chatMessages.push(chatBlock)
     overWriteChromeStorage(["chatMessages"], false)
   }
-}
-
-/**
- * @description Injects or removes a CSS rule that hides the Meet captions overlay.
- * The MutationObserver continues working regardless — only the visual is affected.
- * @param {boolean} hide - true = hide captions overlay, false = show it
- */
-function applyCaptionVisibility(hide) {
-    const existingStyle = document.querySelector("#meet-to-md-hide-captions")
-    if (hide) {
-        if (!existingStyle) {
-            const style = document.createElement("style")
-            style.id = "meet-to-md-hide-captions"
-            style.textContent = `.a4cQT { display: none !important; }`
-            document.head.appendChild(style)
-            console.log("Captions overlay hidden (capture still running)")
-        }
-    } else {
-        if (existingStyle) {
-            existingStyle.remove()
-            console.log("Captions overlay visible")
-        }
-    }
 }
 
 /**
@@ -901,9 +872,3 @@ function recoverLastMeeting() {
   </div>
 </div> */}
 
-// Listen for hideCaptions preference changes from popup (real-time toggle)
-chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area === "sync" && changes.hideCaptions !== undefined) {
-        applyCaptionVisibility(changes.hideCaptions.newValue !== false)
-    }
-})

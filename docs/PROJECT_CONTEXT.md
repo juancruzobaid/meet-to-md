@@ -85,7 +85,6 @@ language-switcher.js            ← NEW — triggers Meet language change via DO
   webhookBodyType: "simple" | "advanced",
   defaultLanguage: "en" | "es",     // NEW — persists forever
   meetingLanguage: "en" | "es",     // NEW — resets to defaultLanguage on new meeting
-  hideCaptions: boolean             // NEW — silent mode (default true)
 }
 ```
 

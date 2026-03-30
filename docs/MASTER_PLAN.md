@@ -62,15 +62,14 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Description:** Selected language recorded in MD YAML `language:` field. Already wired via `background.js` → `md-generator.js`.
 - **Completed:** 2026-03-29
 
-#### Silent mode (hide captions overlay)
-- **Description:** Toggle in popup to hide Meet captions overlay while capture continues. Injects CSS `display: none` on `.a4cQT`. Real-time toggle via `chrome.storage.onChanged`. Default ON.
-- **Main Files:** `extension/content-google-meet.js`, `extension/popup.html`, `extension/popup.js`
-- **Completed:** 2026-03-29
-
 #### Medium Priority
 - [ ] **Language switcher content script:** Trigger Meet caption language change via DOM interaction.
 
 ### ❌ DECIDED AGAINST
+
+#### Silent mode (hide captions overlay)
+- **Reason:** `display: none` on `.a4cQT` causes Meet to stop updating the captions DOM entirely, so MutationObserver receives no mutations and the transcript stays empty. The feature breaks core functionality.
+- **Implemented then reverted:** 2026-03-29
 
 #### File System Access API — Obsidian folder picker
 - **Reason:** Requires the popup to be open when the meeting ends for permission re-authorization after browser restart. Fragile UX that doesn't fit how the extension works. Files always save to `Downloads/meet-to-md/` via `chrome.downloads`. Users can set up OS-level automation to move files to their Obsidian vault.

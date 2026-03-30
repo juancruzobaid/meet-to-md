@@ -117,24 +117,6 @@ source: Google Meet captions
 
 ---
 
-### Silent Mode (popup UI + content script)
-**Purpose:** Hide the captions overlay during a meeting while keeping transcript capture running.
-
-**What the user can do:**
-- Toggle "Silent mode" ON/OFF in the popup (switch control in the language card)
-- Default is ON (captions hidden)
-- Toggle takes effect immediately during an active meeting — no need to reload
-
-**Business rules:**
-- Preference stored in `chrome.storage.sync` key `hideCaptions` (boolean, default `true`)
-- When ON: a `<style id="meet-to-md-hide-captions">` element is injected into Meet's DOM with `.a4cQT { display: none !important; }`
-- When OFF: the injected style element is removed, captions become visible again
-- The CSS `display: none` on the outer container does NOT stop DOM mutations — `MutationObserver` continues capturing transcript from child nodes
-- Initial state applied 1 second after CC activation (delay lets Meet render the container first)
-- Real-time changes via `chrome.storage.onChanged` listener in the content script
-
-**Connections:** `popup.js` writes `hideCaptions` → `chrome.storage.sync` → `content-google-meet.js` reads via `onChanged` listener → injects/removes CSS
-
 ---
 
 ### File Output Location
