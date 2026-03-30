@@ -172,6 +172,53 @@
       background: #2A9ACA;
       color: #ffffff;
     }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      margin: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #2a3a42;
+      border: 1px solid #2A9ACA44;
+      border-radius: 24px;
+      transition: background-color 0.2s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #a0a0a0;
+      border-radius: 50%;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    input:checked + .slider {
+      background-color: #1a3a4a;
+      border-color: #2A9ACA;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+      background-color: #2A9ACA;
+    }
   </style>
 </head>
 
@@ -232,6 +279,20 @@
         <button class="lang-btn" id="lang-es" data-lang="es">ES</button>
       </div>
       <p class="sub-text" style="margin-top: 0.5rem;">Match this to your Google Meet captions language</p>
+
+      <hr class="divider" />
+
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <label for="hide-captions-toggle" style="cursor: pointer;"><b>Silent mode</b><br/>
+            <span class="sub-text">Hide captions overlay during meeting (capture still runs)</span>
+          </label>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="hide-captions-toggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <div class="get-started" style="display: flex; gap: 1rem; align-items: center;">

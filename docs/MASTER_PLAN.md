@@ -62,6 +62,11 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Description:** Selected language recorded in MD YAML `language:` field. Already wired via `background.js` → `md-generator.js`.
 - **Completed:** 2026-03-29
 
+#### Silent mode (hide captions overlay)
+- **Description:** Toggle in popup to hide Meet captions overlay while capture continues. Injects CSS `display: none` on `.a4cQT`. Real-time toggle via `chrome.storage.onChanged`. Default ON.
+- **Main Files:** `extension/content-google-meet.js`, `extension/popup.html`, `extension/popup.js`
+- **Completed:** 2026-03-29
+
 #### Medium Priority
 - [ ] **Language switcher content script:** Trigger Meet caption language change via DOM interaction.
 

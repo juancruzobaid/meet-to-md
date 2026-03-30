@@ -44,6 +44,27 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Add silent mode — hide captions overlay while keeping capture running
+
+**Task received:** Add toggle to popup to hide Meet captions overlay. Default ON (hidden). Capture continues via MutationObserver regardless.
+
+**Files modified:**
+- `extension/content-google-meet.js` — Added `applyCaptionVisibility()` helper, called after CC activation with 1s delay. Added `chrome.storage.onChanged` listener for real-time toggle from popup.
+- `extension/popup.html` — Added silent mode toggle (switch UI) inside language card, added `.switch`/`.slider` CSS
+- `extension/popup.js` — Added silent mode toggle logic: reads/writes `hideCaptions` to `chrome.storage.sync`
+
+**Tests performed:**
+- Code review of CSS injection/removal logic ✅
+- Verified MutationObserver not affected by `display: none` on `.a4cQT` container ✅
+- Verified real-time toggle via `chrome.storage.onChanged` listener ✅
+
+**Final result:** Popup shows "Silent mode" toggle (default ON). Captions overlay hidden during meeting but capture runs normally. Toggle change takes effect immediately.
+
+**Business Logic updated:** Yes — added Silent Mode module
+**Master Plan updated:** Yes — Silent mode moved to Completed
+
+---
+
 ### 2026-03-29 — Remove File System Access API, revert to chrome.downloads
 
 **Task received:** Clean up folder picker — always save to Downloads/meet-to-md/

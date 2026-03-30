@@ -132,6 +132,25 @@ window.onload = function () {
     })
   }
 
+  // Silent mode toggle (hide captions overlay)
+  const hideCaptionsToggle = /** @type {HTMLInputElement} */ (document.querySelector("#hide-captions-toggle"))
+
+  // Load saved preference — default true (hidden)
+  chrome.storage.sync.get(["hideCaptions"], function (result) {
+    if (hideCaptionsToggle) {
+        hideCaptionsToggle.checked = result.hideCaptions !== false
+    }
+  })
+
+  // Save on change
+  if (hideCaptionsToggle) {
+    hideCaptionsToggle.addEventListener("change", function () {
+        chrome.storage.sync.set({ hideCaptions: hideCaptionsToggle.checked }, function () {
+            console.log("hideCaptions set to", hideCaptionsToggle.checked)
+        })
+    })
+  }
+
   // notice?.addEventListener("click", () => {
   //   alert("The transcript may not always be accurate and is only intended to aid in improving productivity. It is the responsibility of the user to ensure they comply with any applicable laws/rules.")
   // })
