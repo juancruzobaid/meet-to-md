@@ -62,8 +62,10 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Description:** Selected language recorded in MD YAML `language:` field. Already wired via `background.js` → `md-generator.js`.
 - **Completed:** 2026-03-29
 
-#### Medium Priority
-- [ ] **Language switcher content script:** Trigger Meet caption language change via DOM interaction.
+#### Language switcher content script
+- **Description:** When user clicks EN/ES in the "This meeting" row, the content script automates Meet's Settings UI: opens Settings → clicks Captions tab → opens language dropdown → selects the target language → closes dialog. ~2 seconds end-to-end.
+- **Main Files:** `extension/language/language-switcher.js` (standalone module), `extension/content-google-meet.js` (inlined + message listener), `extension/popup.js` (`triggerMeetLanguageSwitch()`)
+- **Completed:** 2026-03-29
 
 ### ❌ DECIDED AGAINST
 

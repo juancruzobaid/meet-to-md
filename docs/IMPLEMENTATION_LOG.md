@@ -44,6 +44,31 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Implement Meet caption language switcher — popup toggle controls Meet directly
+
+**Task received:** When user clicks EN/ES in "This meeting" row, automate Meet's Settings UI to change caption language in real time.
+
+**Files created:**
+- `extension/language/language-switcher.js` — Standalone module with `switchMeetCaptionLanguage()`, helper functions for Settings UI automation, DOM selectors
+
+**Files modified:**
+- `extension/content-google-meet.js` — Inlined language switcher code at bottom + added `chrome.runtime.onMessage` listener for `switch_meet_language`
+- `extension/popup.js` — Added `triggerMeetLanguageSwitch()` that queries Meet tabs via `chrome.tabs` and sends message to content script. Called from "This meeting" button handlers.
+- `extension/manifest.json` — Added `"tabs"` permission (required for `chrome.tabs.query` and `chrome.tabs.sendMessage`)
+
+**Tests performed:**
+- Code review of Settings UI automation flow (open → Captions tab → dropdown → select → close) ✅
+- Verified graceful failure: if no Meet tab active, storage still saves, switch silently skipped ✅
+- Verified `chrome.runtime.lastError` handled in popup message callback ✅
+- Verified `return true` in onMessage listener for async response ✅
+
+**Final result:** Clicking EN/ES in "This meeting" saves preference AND switches Meet's caption language live via Settings automation.
+
+**Business Logic updated:** Yes — Language Setting section updated with switcher behavior
+**Master Plan updated:** Yes — Language switcher moved to Completed
+
+---
+
 ### 2026-03-29 — Revert silent mode — CSS display:none breaks MutationObserver
 
 **Task received:** Remove silent mode feature — `display:none` on `.a4cQT` breaks transcript capture.

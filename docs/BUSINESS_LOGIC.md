@@ -110,10 +110,12 @@ source: Google Meet captions
 - The active button is highlighted with filled background (`#2A9ACA`), inactive is outlined
 - Popup shows two rows: "Default" and "This meeting", each with EN/ES buttons
 - The `meetingLanguage` value is used in the MD YAML frontmatter (`language:` field)
-- This toggle does NOT change Meet's caption language via DOM — the user must still set Meet's CC language manually in Meet settings
+- When the user clicks a "This meeting" language button, the popup also sends a `switch_meet_language` message to the Meet content script, which automates Meet's Settings UI to change the caption language in real time (Settings → Captions → language dropdown → select → close)
+- The language switcher uses DOM selectors: `[aria-label="Settings"]`, `[jsname="FbBif"]` (dropdown), `[role="option"]` (language options)
+- If no Meet tab is active or the switcher fails, the storage value is still saved — only the live Meet switch is skipped
 - Migration: users with old `captionLanguage` key are unaffected — `downloadTranscript` falls back to `defaultLanguage` then `"en"`
 
-**Connections:** `chrome.storage.sync.meetingLanguage` → read by `background.js` → passed to `generateMdContent()` in `md-generator.js`. `background.js` resets `meetingLanguage` on `new_meeting_started`.
+**Connections:** `chrome.storage.sync.meetingLanguage` → read by `background.js` → passed to `generateMdContent()` in `md-generator.js`. `background.js` resets `meetingLanguage` on `new_meeting_started`. `popup.js` → `chrome.tabs.sendMessage` → `content-google-meet.js` → `switchMeetCaptionLanguage()`.
 
 ---
 

@@ -143,12 +143,38 @@ window.onload = function () {
     })
   }
 
+  /**
+   * Sends a message to the Meet content script to switch the caption language.
+   * Only works if a Meet tab is currently active.
+   * @param {string} lang
+   */
+  function triggerMeetLanguageSwitch(lang) {
+    chrome.tabs.query({ url: "https://meet.google.com/*" }, function (tabs) {
+      if (tabs.length > 0) {
+        // Send to the most recently active Meet tab
+        const meetTab = tabs[tabs.length - 1]
+        if (meetTab.id) {
+          chrome.tabs.sendMessage(meetTab.id, { type: "switch_meet_language", language: lang }, function (response) {
+            if (chrome.runtime.lastError) {
+              console.log("meet-to-md: Could not reach Meet tab:", chrome.runtime.lastError.message)
+            } else if (response?.success) {
+              console.log("meet-to-md: Meet language switched to", lang)
+            } else {
+              console.log("meet-to-md: Language switch failed or Meet not in meeting")
+            }
+          })
+        }
+      }
+    })
+  }
+
   // Meeting language buttons
   if (meetingLangEnBtn instanceof HTMLButtonElement) {
     meetingLangEnBtn.addEventListener("click", function () {
       chrome.storage.sync.set({ meetingLanguage: "en" }, function () {
         setActiveMeetingLanguage("en")
       })
+      triggerMeetLanguageSwitch("en")
     })
   }
   if (meetingLangEsBtn instanceof HTMLButtonElement) {
@@ -156,6 +182,7 @@ window.onload = function () {
       chrome.storage.sync.set({ meetingLanguage: "es" }, function () {
         setActiveMeetingLanguage("es")
       })
+      triggerMeetLanguageSwitch("es")
     })
   }
 
