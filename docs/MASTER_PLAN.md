@@ -4,9 +4,9 @@
 A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
 
 ## Current Project Status
-**Phase:** Phase 1 completed — MD export replaces TXT
+**Phase:** Phase 1 completed — MD export + language toggle
 **Last Update:** 2026-03-29
-**Features running:** MD export with YAML frontmatter, auto/manual mode, webhooks, meeting history
+**Features running:** MD export with YAML frontmatter, EN/ES language toggle, auto/manual mode, webhooks, meeting history
 
 ## Feature Roadmap
 
@@ -59,10 +59,17 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - [ ] **File System Access API:** Let user pick destination folder (Obsidian vault). Add folder picker to settings. Persist handle across sessions.
 - [ ] **chrome.downloads fallback:** If File System Access API is unavailable, fall back to current download method.
 
+#### EN/ES toggle in popup
+- **Description:** Prominent EN/ES toggle in popup UI. Saves `captionLanguage` to `chrome.storage.sync`. Active button highlighted, persists across sessions.
+- **Main Files:** `extension/popup.html`, `extension/popup.js`
+- **Completed:** 2026-03-29
+
+#### Language in frontmatter
+- **Description:** Selected language recorded in MD YAML `language:` field. Already wired via `background.js` → `md-generator.js`.
+- **Completed:** 2026-03-29
+
 #### Medium Priority
 - [ ] **Language switcher content script:** Trigger Meet caption language change via DOM interaction.
-- [ ] **EN/ES toggle in popup:** Prominent toggle in popup UI, always visible during meeting.
-- [ ] **Language in frontmatter:** Record selected language in MD YAML.
 
 #### Low Priority / Nice to Have
 - [ ] **MEET-DOM.md:** Document Meet language settings DOM selectors for the language switcher.

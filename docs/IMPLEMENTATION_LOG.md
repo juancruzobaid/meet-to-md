@@ -44,6 +44,28 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Add EN/ES language toggle to popup
+
+**Task received:** Issues #9 and #10 — Language toggle UI in popup + save to storage
+
+**Files modified:**
+- `extension/popup.html` — Added language toggle section (EN/ES buttons) between mode section and webhooks section, added `.lang-btn` CSS styles, updated mode description text (TXT → Markdown)
+- `extension/popup.js` — Added language toggle logic: reads/writes `captionLanguage` to `chrome.storage.sync`, toggles `.active` class on buttons
+
+**Tests performed:**
+- Code review of HTML structure and CSS styling ✅
+- Verified toggle logic reads saved language on popup open (defaults to "en") ✅
+- Verified click handlers save language to `chrome.storage.sync` ✅
+
+**Final result:** Popup now shows EN/ES toggle. Selected language persists across popup opens and appears correctly in MD frontmatter via `background.js` → `md-generator.js`.
+
+**Business Logic updated:** Yes — added Language Setting module
+**Master Plan updated:** Yes — EN/ES toggle and Language in frontmatter moved to Completed
+
+**Next step:** Manual validation in Chrome
+
+---
+
 ### 2026-03-29 — Create MD generator and wire into export flow
 
 **Task received:** Issue #5 and #6 — Create md-generator.js and replace TXT export

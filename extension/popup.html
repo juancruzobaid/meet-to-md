@@ -148,6 +148,30 @@
       font-family: "SUSE", sans-serif;
       font-size: small;
     }
+
+    .language-toggle {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .lang-btn {
+      padding: 0.4rem 1.25rem;
+      border-radius: 6px;
+      border: 2px solid #2A9ACA;
+      font-family: "TASA Explorer", sans-serif;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      color: #2A9ACA;
+      background: transparent;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .lang-btn.active {
+      background: #2A9ACA;
+      color: #ffffff;
+    }
   </style>
 </head>
 
@@ -198,9 +222,16 @@
         </label>
       </div>
       <!-- <hr class="divider" /> -->
-      <p>In both modes, transcript will be downloaded as a text file at the
-        end of each meeting
-      </p>
+      <p>In both modes, transcript will be downloaded as a Markdown file at the end of each meeting.</p>
+    </div>
+
+    <div class="get-started">
+      <p style="margin-bottom: 0.5rem;"><b>Transcript language</b></p>
+      <div class="language-toggle">
+        <button class="lang-btn" id="lang-en" data-lang="en">EN</button>
+        <button class="lang-btn" id="lang-es" data-lang="es">ES</button>
+      </div>
+      <p class="sub-text" style="margin-top: 0.5rem;">Match this to your Google Meet captions language</p>
     </div>
 
     <div class="get-started" style="display: flex; gap: 1rem; align-items: center;">

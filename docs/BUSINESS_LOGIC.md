@@ -94,6 +94,24 @@ source: Google Meet captions
 
 ---
 
+### Language Setting (popup UI)
+**Purpose:** Let the user set the caption language before or during a meeting.
+
+**What the user can do:**
+- Toggle between EN and ES using two prominent buttons in the popup
+- Selected language persists across popup opens and browser sessions
+
+**Business rules:**
+- Language stored in `chrome.storage.sync` key `captionLanguage`
+- Default value is `"en"` if not set
+- The active button is highlighted with filled background (`#2A9ACA`), inactive is outlined
+- The selected language is used in the MD YAML frontmatter (`language:` field)
+- This toggle does NOT change Meet's caption language via DOM — the user must still set Meet's CC language manually in Meet settings
+
+**Connections:** `chrome.storage.sync.captionLanguage` → read by `background.js` → passed to `generateMdContent()` in `md-generator.js`
+
+---
+
 ### Webhook Integration (upstream)
 **Purpose:** Post transcript data to an external URL after each meeting.
 

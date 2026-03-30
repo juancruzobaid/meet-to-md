@@ -99,6 +99,39 @@ window.onload = function () {
     syncPlatformStatus(zoomToggle, "zoom")
   }
 
+  // Language toggle
+  const langEnBtn = document.querySelector("#lang-en")
+  const langEsBtn = document.querySelector("#lang-es")
+
+  function setActiveLanguage(lang) {
+    if (langEnBtn instanceof HTMLButtonElement && langEsBtn instanceof HTMLButtonElement) {
+      langEnBtn.classList.toggle("active", lang === "en")
+      langEsBtn.classList.toggle("active", lang === "es")
+    }
+  }
+
+  // Load saved language on popup open, default to "en"
+  chrome.storage.sync.get(["captionLanguage"], function (result) {
+    setActiveLanguage(result.captionLanguage || "en")
+  })
+
+  // Save language on click
+  if (langEnBtn instanceof HTMLButtonElement) {
+    langEnBtn.addEventListener("click", function () {
+      chrome.storage.sync.set({ captionLanguage: "en" }, function () {
+        setActiveLanguage("en")
+      })
+    })
+  }
+
+  if (langEsBtn instanceof HTMLButtonElement) {
+    langEsBtn.addEventListener("click", function () {
+      chrome.storage.sync.set({ captionLanguage: "es" }, function () {
+        setActiveLanguage("es")
+      })
+    })
+  }
+
   // notice?.addEventListener("click", () => {
   //   alert("The transcript may not always be accurate and is only intended to aid in improving productivity. It is the responsibility of the user to ensure they comply with any applicable laws/rules.")
   // })
