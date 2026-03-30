@@ -24,15 +24,12 @@ async function switchMeetCaptionLanguage(languageCode) {
     }
 
     try {
-        // Step 1: Open the Settings dialog
         const settingsOpened = await openSettingsDialog()
         if (!settingsOpened) {
             console.error("meet-to-md: Could not open Settings dialog")
             return false
         }
 
-        // Step 2: Navigate to Captions tab
-        await sleep(300)
         const captionsTabOpened = await clickCaptionsTab()
         if (!captionsTabOpened) {
             console.error("meet-to-md: Could not find Captions tab")
@@ -40,8 +37,6 @@ async function switchMeetCaptionLanguage(languageCode) {
             return false
         }
 
-        // Step 3: Open the language dropdown
-        await sleep(300)
         const dropdownOpened = await openLanguageDropdown()
         if (!dropdownOpened) {
             console.error("meet-to-md: Could not open language dropdown")
@@ -49,8 +44,7 @@ async function switchMeetCaptionLanguage(languageCode) {
             return false
         }
 
-        // Step 4: Select the target language option
-        await sleep(200)
+        await sleep(100)
         const selected = await selectLanguageOption(targetLanguage)
         if (!selected) {
             console.error("meet-to-md: Could not find language option for:", targetLanguage)
@@ -58,10 +52,8 @@ async function switchMeetCaptionLanguage(languageCode) {
             return false
         }
 
-        // Step 5: Close the settings dialog
         await sleep(300)
         closeSettingsDialog()
-
         console.log("meet-to-md: Caption language switched to", targetLanguage)
         return true
 
@@ -80,14 +72,15 @@ async function openSettingsDialog() {
     const settingsBtn =
         document.querySelector('[aria-label="Settings"]') ||
         document.querySelector('[data-tooltip="Settings"]') ||
-        // Fallback: find by icon text
         Array.from(document.querySelectorAll('.google-symbols')).find(el => el.textContent.trim() === 'settings')?.closest('button')
 
     if (settingsBtn instanceof HTMLElement) {
         settingsBtn.click()
-        await sleep(500)
-        // Verify dialog opened
-        return !!document.querySelector('[role="dialog"]')
+        // Wait up to 2s for dialog to appear
+        for (let i = 0; i < 20; i++) {
+            await sleep(100)
+            if (document.querySelector('[role="dialog"]')) return true
+        }
     }
     return false
 }
@@ -97,19 +90,26 @@ async function openSettingsDialog() {
  * @returns {Promise<boolean>}
  */
 async function clickCaptionsTab() {
-    const allButtons = Array.from(document.querySelectorAll('[role="dialog"] [role="tab"], [role="dialog"] button, [role="dialog"] [role="menuitem"]'))
-    const captionsBtn = allButtons.find(el =>
-        el.textContent.trim() === 'Captions' ||
-        el.textContent.trim() === 'Subtítulos' ||
-        el.getAttribute('aria-label')?.includes('Captions')
-    )
-    if (captionsBtn instanceof HTMLElement) {
-        captionsBtn.click()
-        await sleep(300)
-        return true
+    // Wait up to 1s for dialog content to load
+    for (let i = 0; i < 10; i++) {
+        await sleep(100)
+        const allButtons = Array.from(document.querySelectorAll('[role="dialog"] [role="tab"], [role="dialog"] button, [role="dialog"] [role="menuitem"]'))
+        const captionsBtn = allButtons.find(el =>
+            el.textContent.trim() === 'Captions' ||
+            el.textContent.trim() === 'Subtítulos' ||
+            el.getAttribute('aria-label')?.includes('Captions')
+        )
+        if (captionsBtn instanceof HTMLElement) {
+            captionsBtn.click()
+            await sleep(400)
+            return true
+        }
+        // Maybe already on Captions tab
+        if (document.querySelector('[jsname="FbBif"]') || document.querySelector('.rHGeGc-uusGie-fmcmS')) {
+            return true
+        }
     }
-    // Maybe we're already on Captions tab — check if language dropdown exists
-    return !!document.querySelector('[jsname="FbBif"]')
+    return false
 }
 
 /**
@@ -117,12 +117,21 @@ async function clickCaptionsTab() {
  * @returns {Promise<boolean>}
  */
 async function openLanguageDropdown() {
-    const dropdown = document.querySelector('[jsname="FbBif"]')
-    if (dropdown instanceof HTMLElement) {
-        dropdown.click()
-        await sleep(300)
-        // Verify options appeared
-        return document.querySelectorAll('[role="option"]').length > 0
+    // Poll up to 2s for the dropdown to appear
+    let dropdown = null
+    for (let i = 0; i < 20; i++) {
+        await sleep(100)
+        dropdown = document.querySelector('[jsname="FbBif"]') || document.querySelector('.rHGeGc-uusGie-fmcmS')
+        if (dropdown instanceof HTMLElement) break
+    }
+    if (!dropdown) return false
+
+    dropdown.click()
+
+    // Poll up to 2s for options to appear
+    for (let i = 0; i < 20; i++) {
+        await sleep(100)
+        if (document.querySelectorAll('[role="option"]').length > 0) return true
     }
     return false
 }
@@ -147,6 +156,7 @@ async function selectLanguageOption(languagePrefix) {
  */
 function closeSettingsDialog() {
     const closeBtn =
+        document.querySelector('[role="dialog"] [aria-label="Close dialog"]') ||
         document.querySelector('[role="dialog"] [aria-label="Close"]') ||
         document.querySelector('[role="dialog"] button[jsname="tQd7Nd"]') ||
         Array.from(document.querySelectorAll('[role="dialog"] button')).find(el =>
@@ -157,7 +167,6 @@ function closeSettingsDialog() {
         closeBtn.click()
         return
     }
-    // Fallback: Escape key
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
 }
 

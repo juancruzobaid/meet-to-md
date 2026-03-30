@@ -44,6 +44,21 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-03-29 — Fix language switcher timing — polling instead of fixed delays
+
+**Task received:** Fix language switcher — dropdown element exists but code times out before it renders.
+
+**Files modified:**
+- `extension/language/language-switcher.js` — Replaced fixed `sleep()` delays with polling loops (up to 2s per step). Added `.rHGeGc-uusGie-fmcmS` as fallback selector for language dropdown. Added `[aria-label="Close dialog"]` as first close button selector.
+- `extension/content-google-meet.js` — Same changes to inlined copy of language switcher functions.
+
+**Final result:** Language switcher now polls for elements up to 2s per step instead of fixed delays. More reliable on slow connections.
+
+**Business Logic updated:** No — no behavior change, just timing fix
+**Master Plan updated:** No
+
+---
+
 ### 2026-03-29 — Implement Meet caption language switcher — popup toggle controls Meet directly
 
 **Task received:** When user clicks EN/ES in "This meeting" row, automate Meet's Settings UI to change caption language in real time.
