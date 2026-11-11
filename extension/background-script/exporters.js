@@ -1,5 +1,6 @@
 import { getTranscriptString, getChatMessagesString } from './utils.js'
 import { TIMEFORMAT } from './config.js'
+import { generateMdFilename, generateMdContent } from './md-generator.js'
 
 /**
  * @param {number} index
@@ -14,37 +15,11 @@ export function downloadTranscript(index, isWebhookEnabled) {
             if (resultLocal.meetings && resultLocal.meetings[index]) {
                 const meeting = resultLocal.meetings[index]
 
-                // Sanitise meeting title to prevent invalid file name errors
-                // https://stackoverflow.com/a/78675894
-                const invalidFilenameRegex = /[:?"*<>|~/\\\u{1}-\u{1f}\u{7f}\u{80}-\u{9f}\p{Cf}\p{Cn}]|^[.\u{0}\p{Zl}\p{Zp}\p{Zs}]|[.\u{0}\p{Zl}\p{Zp}\p{Zs}]$|^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?=\.|$)/gui
-                let sanitisedMeetingTitle = "Meeting"
-                if (meeting.meetingTitle) {
-                    sanitisedMeetingTitle = meeting.meetingTitle.replaceAll(invalidFilenameRegex, "_")
-                }
-                else if (meeting.title) {
-                    sanitisedMeetingTitle = meeting.title.replaceAll(invalidFilenameRegex, "_")
-                }
+                // Markdown filename and content (meet-to-md)
+                const fileName = generateMdFilename(meeting)
+                const content = generateMdContent(meeting)
 
-                // Format timestamp for human-readable filename and sanitise to prevent invalid filenames
-                const timestamp = new Date(meeting.meetingStartTimestamp)
-                const formattedTimestamp = timestamp.toLocaleString("default", TIMEFORMAT).replace(/[\/:]/g, "-")
-
-                const prefix = meeting.meetingSoftware ? `${meeting.meetingSoftware} transcript` : "Transcript"
-
-                const fileName = `TranscripTonic/${prefix}-${sanitisedMeetingTitle} at ${formattedTimestamp} on.txt`
-
-
-                // Format transcript and chatMessages content
-                let content = getTranscriptString(meeting.transcript)
-                content += `\n\n---------------\nCHAT MESSAGES\n---------------\n\n`
-                content += getChatMessagesString(meeting.chatMessages)
-
-                // Add branding
-                content += "\n\n---------------\n"
-                content += "Transcript saved using TranscripTonic Chrome extension (https://chromewebstore.google.com/detail/ciepnfnceimjehngolkijpnbappkkiag)"
-                content += "\n---------------"
-
-                const blob = new Blob([content], { type: "text/plain" })
+                const blob = new Blob([content], { type: "text/markdown" })
 
                 // Read the blob as a data URL
                 const reader = new FileReader()
@@ -71,7 +46,7 @@ export function downloadTranscript(index, isWebhookEnabled) {
                             chrome.downloads.download({
                                 // @ts-ignore
                                 url: dataUrl,
-                                filename: "TranscripTonic/Transcript.txt",
+                                filename: "meet-to-md/Meeting.md",
                                 conflictAction: "uniquify"
                             })
                             console.log("Invalid file name. Transcript downloaded to TranscripTonic directory with simple file name.")

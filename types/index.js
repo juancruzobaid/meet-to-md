@@ -97,6 +97,7 @@
  * @property {TranscriptBlock[] | []} transcript array containing transcript blocks from the meeting
  * @property {ChatMessage[] | []} chatMessages array containing chat messages from the meeting
  * @property {"new" | "failed" | "successful"} webhookPostStatus status of the webhook post request
+ * @property {string} [language] caption language code captured for this meeting (meet-to-md)
  */
 
 /** @typedef {Object} StateTranscriptBlock
@@ -175,6 +176,8 @@
  * @property {WantGoogleMeet} wantGoogleMeet
  * @property {WantTeams} wantTeams
  * @property {WantZoom} wantZoom
+ * @property {string} defaultLanguage default caption language code (meet-to-md)
+ * @property {string} meetingLanguage caption language code for the current meeting, reset per meeting (meet-to-md)
 */
 
 

@@ -90,21 +90,27 @@ export function pickupLastMeetingFromStorage() {
                         webhookPostStatus: "new"
                     }
 
-                    // Get existing recent meetings and add the new meeting
-                    chrome.storage.local.get(["meetings"], function (resultLocalUntyped) {
-                        const resultLocal = /** @type {ResultLocal} */ (resultLocalUntyped)
-                        let meetings = resultLocal.meetings || []
-                        meetings.push(newMeetingEntry)
+                    // meet-to-md: store caption language per meeting so later downloads keep the right value
+                    chrome.storage.sync.get(["meetingLanguage", "defaultLanguage"], function (resultSyncUntyped) {
+                        const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
+                        newMeetingEntry.language = resultSync.meetingLanguage || resultSync.defaultLanguage || "en"
 
-                        // Keep only last 10 transcripts
-                        if (meetings.length > 10) {
-                            meetings = meetings.slice(-10)
-                        }
+                        // Get existing recent meetings and add the new meeting
+                        chrome.storage.local.get(["meetings"], function (resultLocalUntyped) {
+                            const resultLocal = /** @type {ResultLocal} */ (resultLocalUntyped)
+                            let meetings = resultLocal.meetings || []
+                            meetings.push(newMeetingEntry)
 
-                        // Save updated recent transcripts
-                        chrome.storage.local.set({ meetings: meetings }, function () {
-                            console.log("Last meeting picked up")
-                            resolve("Last meeting picked up")
+                            // Keep only last 10 transcripts
+                            if (meetings.length > 10) {
+                                meetings = meetings.slice(-10)
+                            }
+
+                            // Save updated recent transcripts
+                            chrome.storage.local.set({ meetings: meetings }, function () {
+                                console.log("Last meeting picked up")
+                                resolve("Last meeting picked up")
+                            })
                         })
                     })
                 }

@@ -1,0 +1,98 @@
+# Master Plan — Meet to MD
+
+## Product Vision
+A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
+
+## Current Project Status
+**Phase:** Phase 1 completed — MD export + language toggle
+**Last Update:** 2026-03-29
+**Features running:** MD export with YAML frontmatter (saves to Downloads/meet-to-md/), EN/ES language toggle, auto/manual mode, webhooks, meeting history
+
+## Feature Roadmap
+
+### ✅ COMPLETED (inherited from TranscripTonic)
+#### Caption scraping — Google Meet
+- **Description:** MutationObserver captures speaker + text + timestamp from Meet captions DOM
+- **Main Files:** `extension/content-google-meet.js`
+
+#### Meeting lifecycle management
+- **Description:** Detects meeting start/end, saves to storage, triggers export
+- **Main Files:** `extension/background.js`
+
+#### TXT export
+- **Description:** Downloads transcript as plain text file via chrome.downloads
+- **Main Files:** `extension/background.js` → `downloadTranscript()`
+
+#### Auto/manual mode
+- **Description:** Auto mode captures all meetings; manual requires user to enable CC
+- **Main Files:** `extension/popup.js`, `extension/background.js`
+
+#### Webhook integration
+- **Description:** Posts transcript to a user-configured URL after meeting ends
+- **Main Files:** `extension/background.js` → `postTranscriptToWebhook()`
+
+#### Meeting history
+- **Description:** Stores last 10 meetings, allows manual download and webhook retry
+- **Main Files:** `extension/meetings.html`, `extension/meetings.js`
+
+#### Fork setup
+- **Description:** Repo forked, upstream remote added, docs/ folder initialized
+- **Completed:** 2025-03-29
+
+#### Project documentation
+- **Description:** Created PROJECT_CONTEXT, MASTER_PLAN, BUSINESS_LOGIC, IMPLEMENTATION_LOG
+- **Completed:** 2025-03-29
+
+#### MD generator
+- **Description:** Created `extension/export/md-generator.js` with `generateMdFilename()` and `generateMdContent()`. Outputs YAML frontmatter (date, meeting_id, language, participants, duration_minutes) + structured Markdown transcript.
+- **Main Files:** `extension/export/md-generator.js`
+- **Completed:** 2026-03-29
+
+#### Replace TXT export
+- **Description:** Wired `md-generator.js` into `downloadTranscript()` in `background.js`. Extension now downloads `.md` files to `meet-to-md/` folder instead of `.txt` to `TranscripTonic/`.
+- **Main Files:** `extension/background.js` → `downloadTranscript()`
+- **Completed:** 2026-03-29
+
+#### EN/ES toggle in popup
+- **Description:** Prominent EN/ES toggle in popup UI. Saves `captionLanguage` to `chrome.storage.sync`. Active button highlighted, persists across sessions.
+- **Main Files:** `extension/popup.html`, `extension/popup.js`
+- **Completed:** 2026-03-29
+
+#### Language in frontmatter
+- **Description:** Selected language recorded in MD YAML `language:` field. Already wired via `background.js` → `md-generator.js`.
+- **Completed:** 2026-03-29
+
+#### Language switcher content script
+- **Description:** When user clicks EN/ES in the "This meeting" row, the content script automates Meet's Settings UI: opens Settings → clicks Captions tab → opens language dropdown → selects the target language → closes dialog. ~2 seconds end-to-end.
+- **Main Files:** `extension/language/language-switcher.js` (standalone module), `extension/content-google-meet.js` (inlined + message listener), `extension/popup.js` (`triggerMeetLanguageSwitch()`)
+- **Completed:** 2026-03-29
+
+### ❌ DECIDED AGAINST
+
+#### Silent mode (hide captions overlay)
+- **Reason:** `display: none` on `.a4cQT` causes Meet to stop updating the captions DOM entirely, so MutationObserver receives no mutations and the transcript stays empty. The feature breaks core functionality.
+- **Implemented then reverted:** 2026-03-29
+
+#### File System Access API — Obsidian folder picker
+- **Reason:** Requires the popup to be open when the meeting ends for permission re-authorization after browser restart. Fragile UX that doesn't fit how the extension works. Files always save to `Downloads/meet-to-md/` via `chrome.downloads`. Users can set up OS-level automation to move files to their Obsidian vault.
+- **Implemented then reverted:** 2026-03-29
+
+#### Low Priority / Nice to Have
+- [ ] **MEET-DOM.md:** Document Meet language settings DOM selectors for the language switcher.
+- [ ] **README update:** Replace TranscripTonic README with Meet to MD description, fork attribution, install instructions.
+- [ ] **Custom filename pattern:** Let user configure the MD filename format in settings.
+
+## Component Architecture Map
+
+### Backend
+- **`background.js`** — `downloadTranscript()` is our main modification target. `processLastMeeting()` orchestrates the full export flow.
+- **`extension/export/md-generator.js`** (NEW) — `generateMdContent(meeting)` and `generateMdFilename(meeting)`
+
+### Frontend
+- **`popup.html` / `popup.js`** — Add language toggle (EN/ES). Minimal change.
+- **`extension/language/language-switcher.js`** (NEW) — DOM interaction to change Meet caption language.
+
+## Upstream Sync
+- Remote: `git remote add upstream https://github.com/vivek-nexus/transcriptonic`
+- Sync: `git fetch upstream && git merge upstream/main`
+- Conflicts expected only in `background.js` (around `downloadTranscript`) and `popup.html/js`
