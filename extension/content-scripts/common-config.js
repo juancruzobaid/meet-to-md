@@ -4,13 +4,13 @@ const extensionStatusJSON_bug = {
     "message": `<strong>TranscripTonic encountered a new error</strong> <br /> Please report it <a href="https://github.com/vivek-nexus/transcriptonic/issues" target="_blank">here</a>.`
 }
 const reportErrorMessage = "There is a bug in TranscripTonic. Please report it at https://github.com/vivek-nexus/transcriptonic/issues"
-const LOG_ERROR_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0VFUYIke1WK12Q-8y-zQ91bOPRZ8dAL4cRpm309IYZO0k6uYDkTSlfbWFaGvUV_Z-JQ/exec"
 
 
 /** @type {MutationObserverInit} */
 const mutationConfig = { childList: true, attributes: true, subtree: true, characterData: true }
 
-const LOGO_URL = "https://ejnana.github.io/transcripto-status/icon.png"
+// Bundled icon (web accessible resource), so the page never loads remote images
+const LOGO_URL = chrome.runtime.getURL("icon.png")
 const commonCSS = `background: rgb(255 255 255 / 100%); 
     backdrop-filter: blur(16px); 
     position: fixed;
@@ -33,15 +33,6 @@ const commonCSS = `background: rgb(255 255 255 / 100%);
 
 const NOTIFICATION_PLATFORM_CONFIGS = {
     "google_meet": {
-        notificationText: "<strong>TranscripTonic is running</strong> <br /> Do not turn off captions",
-        statusUrl: "https://ejnana.github.io/transcripto-status/status-prod-meet.json"
-    },
-    "teams": {
-        notificationText: "<b>TranscripTonic is ready, enabling captions...</b> <br /> Please enable manually if not successful (More > Captions)",
-        statusUrl: "https://ejnana.github.io/transcripto-status/status-prod-teams.json"
-    },
-    "zoom": {
-        notificationText: "TranscripTonic is ready <br /> <b>Please switch on Zoom captions to begin (More > Captions)</b>",
-        statusUrl: "https://ejnana.github.io/transcripto-status/status-prod-zoom.json"
+        notificationText: "<strong>TranscripTonic is running</strong> <br /> Do not turn off captions"
     }
 }

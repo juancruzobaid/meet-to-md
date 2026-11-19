@@ -36,47 +36,16 @@ function createContentScriptState(meetingSoftware, platform) {
 }
 
 /**
- * @description Fetches extension status from GitHub and saves to chrome storage. Defaults to 200, if remote server is unavailable.
+ * @description Sets the extension status. Purely local: no remote status/kill-switch server is contacted.
  * @param {ContentScriptState} state
  */
 function checkExtensionStatus(state) {
-    return new Promise((resolve, reject) => {
-        // Set default value as 200
+    return new Promise((resolve) => {
         state.extensionStatusJSON = {
             status: 200,
             message: state.meetingSoftware ? NOTIFICATION_PLATFORM_CONFIGS[state.platform].notificationText : ""
         }
-
-        // https://stackoverflow.com/a/42518434
-        fetch(
-            state.meetingSoftware ? NOTIFICATION_PLATFORM_CONFIGS[state.platform].statusUrl : "",
-            { cache: "no-store" }
-        )
-            .then((response) => response.json())
-            .then((result) => {
-                const minVersion = result.minVersion
-
-                // Disable extension if version is below the min version
-                if (!meetsMinVersion(chrome.runtime.getManifest().version, minVersion)) {
-                    state.extensionStatusJSON.status = 400
-                    state.extensionStatusJSON.message = `<strong>TranscripTonic is not running</strong> <br /> Please update to v${minVersion} by following <a href="https://github.com/vivek-nexus/transcriptonic/wiki/Manually-update-TranscripTonic" target="_blank">these instructions</a>`
-                }
-                else {
-                    // Update status based on response
-                    state.extensionStatusJSON.status = result.status
-                    state.extensionStatusJSON.message = result.message
-                    state.extensionStatusJSON.showBetaMessage = (result.showBetaMessage === true)
-                }
-
-                console.log("Extension status fetched and saved")
-                resolve("Extension status fetched and saved")
-            })
-            .catch((err) => {
-                console.error(err)
-                reject("Could not fetch extension status")
-
-                logError(state, "008", err)
-            })
+        resolve("Extension status set")
     })
 }
 
@@ -224,13 +193,6 @@ function startTranscriptMonitor(state) {
             case "google_meet":
                 activeNode = document.querySelector(SELECTORS_GOOGLE_MEET.TRANSCRIPT_REGION)
                 break
-            case "teams":
-                activeNode = document.querySelector(SELECTORS_TEAMS.CAPTIONS_REGION)
-                break
-            case "zoom":
-                const iframe = /** @type {Document} */ (/** @type {HTMLIFrameElement} */(document.querySelector(SELECTORS_ZOOM.IFRAME))?.contentDocument)
-                activeNode = iframe.querySelector(SELECTORS_ZOOM.TRANSCRIPT_CONTAINER)
-                break
             default:
                 break
         }
@@ -264,12 +226,6 @@ function startTranscriptMonitor(state) {
                     case "google_meet":
                         transcriptMutationCallbackGoogleMeet(state, mutations)
                         break
-                    case "teams":
-                        transcriptMutationCallbackTeams(state, mutations)
-                        break
-                    case "zoom":
-                        transcriptMutationCallbackZoom(state, mutations)
-                        break
                     default:
                         break
                 }
@@ -280,17 +236,7 @@ function startTranscriptMonitor(state) {
             chrome.storage.sync.get(["hideCaptions"], function (resultSyncUntyped) {
                 const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
                 if ((resultSync.hideCaptions === true) && (state.transcriptTargetNode)) {
-                    if (state.platform === "teams") {
-                        waitForElement(SELECTORS_TEAMS.CAPTIONS_REGION_WRAPPER).then((element) => {
-                            element?.setAttribute("style", `height:40px`)
-                        })
-                        waitForElement(SELECTORS_TEAMS.CAPTIONS_REGION).then((element) => {
-                            element?.setAttribute("style", `opacity:0`)
-                        })
-                    }
-                    else {
-                        state.transcriptTargetNode.setAttribute("style", `opacity:0; height:0px`)
-                    }
+                    state.transcriptTargetNode.setAttribute("style", `opacity:0; height:0px`)
                 }
             })
         }
@@ -394,7 +340,7 @@ function renderFab() {
     fab.title = "TranscripTonic"
     fab.style.cssText = fabCss
 
-    const logoUrl = "https://ejnana.github.io/transcripto-status/icon.png"
+    const logoUrl = LOGO_URL
 
     fab.innerHTML = `
         <div id="fab-main-content" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
@@ -554,28 +500,11 @@ function logTranscriptToConsole(state) {
 }
 
 /**
-   * @description Logs anonymous errors to a Google sheet for swift debugging
+   * @description Logs errors to the local console only (upstream remote error logging removed)
    * @param {ContentScriptState} state
    * @param {string} code
    * @param {any} err
    */
 function logError(state, code, err) {
-    fetch(`${LOG_ERROR_SCRIPT_URL}?version=${chrome.runtime.getManifest().version}&code=${code}&error=${encodeURIComponent(err)}&meetingSoftware=${state.meetingSoftware}`, { mode: "no-cors" })
-}
-
-/**
-   * @description Checks if the installed extension version meets the minimum required version.
-   * @param {string} oldVer
-   * @param {string} newVer
-   */
-function meetsMinVersion(oldVer, newVer) {
-    const oldParts = oldVer.split('.')
-    const newParts = newVer.split('.')
-    for (var i = 0; i < newParts.length; i++) {
-        const a = ~~newParts[i] // parse int
-        const b = ~~oldParts[i] // parse int
-        if (a > b) return false
-        if (a < b) return true
-    }
-    return true
+    console.error(`Error ${code} (${state.meetingSoftware}):`, err)
 }

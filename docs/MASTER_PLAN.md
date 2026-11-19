@@ -4,9 +4,9 @@
 A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
 
 ## Current Project Status
-**Phase:** Phase 1 completed — MD export + language toggle
-**Last Update:** 2026-03-29
-**Features running:** MD export with YAML frontmatter (saves to Downloads/meet-to-md/), EN/ES language toggle, auto/manual mode, webhooks, meeting history
+**Phase:** Cleanup completed (Meet only, no telemetry) — next: Firefox compatibility
+**Last Update:** 2026-11-19
+**Features running:** Google Meet only. MD export with YAML frontmatter (saves to Downloads/meet-to-md/), auto/manual mode, webhooks, meeting history, live side panel. No telemetry.
 
 ## Feature Roadmap
 
@@ -67,7 +67,23 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Main Files:** `extension/language/language-switcher.js` (standalone module), `extension/content-google-meet.js` (inlined + message listener), `extension/popup.js` (`triggerMeetLanguageSwitch()`)
 - **Completed:** 2026-03-29
 
+#### Remove Zoom/Teams, dead code and upstream telemetry
+- **Description:** Deleted Teams/Zoom content scripts, Zoom redirect ruleset (`rules.json`) and their permissions; removed the unused daily-permission-check alarm; removed upstream telemetry (`script.google.com`), remote status check and remote logo. Fixed the download fallback (now awaited, rejects with 009) and the webhook-failure notification listener leak (single top-level listener, notification only if permission granted). Extension renamed to "Meet to MD".
+- **Main Files:** `extension/manifest.json`, `extension/background-script/*`, `extension/content-scripts/common-*.js`, `extension/popup/*`, `extension/meetings.js`, `types/index.js`
+- **Completed:** 2026-11-19
+
+### 🚧 IN PROGRESS
+
+#### Firefox compatibility
+- **Description:** Make the extension load and work in Firefox (MV3), keeping a single codebase with Chromium (Día/Chrome).
+- **Status:** Next task (Step 2). Not started.
+
 ### ❌ DECIDED AGAINST
+
+#### Zoom / Teams support
+- **Reason:** Owner only uses Google Meet. Upstream Teams/Zoom code removed to reduce surface area and permissions.
+- **Removed:** 2026-11-19
+
 
 #### Silent mode (hide captions overlay)
 - **Reason:** `display: none` on `.a4cQT` causes Meet to stop updating the captions DOM entirely, so MutationObserver receives no mutations and the transcript stays empty. The feature breaks core functionality.

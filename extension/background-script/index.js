@@ -1,6 +1,5 @@
-import { ALARM_NAME } from "./config.js"
 import { processLastMeeting, recoverLastMeeting } from "./meetings.js"
-import { downloadTranscript, postTranscriptToWebhook } from "./exporters.js"
+import { downloadTranscript, postTranscriptToWebhook, WEBHOOK_FAILED_NOTIFICATION_PREFIX } from "./exporters.js"
 import {
     getPermissionStatus,
     requestPlatformPermission,
@@ -8,13 +7,10 @@ import {
     registerContentScript,
     deregisterContentScript,
     reRegisterContentScripts,
-    registerZoomRedirect,
-    deregisterZoomRedirect,
 } from "./platforms.js"
 import {
     clearTabIdAndApplyUpdate,
     openExtensionPopup,
-    checkAndCreateAlarm,
     openSidePanel
 } from "./utils.js"
 
@@ -52,9 +48,6 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
                     sendResponse(response)
                 })
                 .finally(() => {
-                    // setTimeout(() => {
-                    //     checkPermissionsAndOpenMeetingsPage()
-                    // }, 10000)
                     clearTabIdAndApplyUpdate()
                 })
         })
@@ -174,19 +167,10 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
         let platform = message.platform || "google_meet"
 
         requestPlatformPermission(platform).then(() => {
-            // After permissions are granted, register both the scripts and the redirect rule for zoom
-            const promises = [registerContentScript(platform)]
-
-            const platformsArray = Array.isArray(platform) ? platform : [platform]
-            const hasZoom = platformsArray.includes("zoom")
-
-            if (hasZoom) {
-                promises.push(registerZoomRedirect())
-            }
-
-            Promise.all(promises).then((results) => {
+            // After permissions are granted, register the content script
+            registerContentScript(platform).then((result) => {
                 /** @type {ExtensionResponse} */
-                const response = { success: true, message: results[0] }
+                const response = { success: true, message: result }
                 sendResponse(response)
             }).catch((error) => {
                 // Fails with error codes: not defined
@@ -211,19 +195,10 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
         /** @type {Platform | Platform[]} */
         let platform = message.platform || "google_meet"
 
-        // To disable, we simply unregister the content scripts and any redirect rules
-        const promises = [deregisterContentScript(platform)]
-
-        const platformsArray = Array.isArray(platform) ? platform : [platform]
-        const hasZoom = platformsArray.includes("zoom")
-
-        if (hasZoom) {
-            promises.push(deregisterZoomRedirect())
-        }
-
-        Promise.all(promises).then((results) => {
+        // To disable, we simply unregister the content script
+        deregisterContentScript(platform).then((result) => {
             /** @type {ExtensionResponse} */
-            const response = { success: true, message: results[0] }
+            const response = { success: true, message: result }
             sendResponse(response)
         }).catch((error) => {
             const parsedError = /** @type {ErrorObject} */ (error)
@@ -283,9 +258,6 @@ chrome.tabs.onRemoved.addListener(function (tabId) {
                 console.log("Meeting tab id set to processing meeting")
 
                 processLastMeeting().finally(() => {
-                    // setTimeout(() => {
-                    //     checkPermissionsAndOpenMeetingsPage()
-                    // }, 10000)
                     clearTabIdAndApplyUpdate()
                 })
             })
@@ -312,22 +284,22 @@ chrome.runtime.onUpdateAvailable.addListener(() => {
     })
 })
 
-// Register content scripts and Zoom redirect whenever runtime permission change—mostly serves as a backup for changes made outside the UI.
+// Re-register the Google Meet content script whenever runtime permissions change—mostly serves as a backup for changes made outside the UI.
 chrome.permissions.onAdded.addListener((event) => {
+    registerNotificationClickListener()
+
     // Prevent competing with explicit content script registrations
     setTimeout(() => {
-        /** @type {Platform[]} */
-        const platforms = ["google_meet", "teams", "zoom"]
-        /** @type {Promise<any>[]} */
-        const deRegisterPromises = [deregisterContentScript(platforms), deregisterZoomRedirect()]
-
-        Promise.all(deRegisterPromises)
+        deregisterContentScript("google_meet")
             .then(() => {
-                console.log("De-registered all content scripts. Starting re-registration...")
-
+                console.log("De-registered Google Meet content script. Starting re-registration...")
             })
-
-        reRegisterContentScripts()
+            .catch((error) => {
+                console.log(error)
+            })
+            .finally(() => {
+                reRegisterContentScripts()
+            })
     }, 2000)
 })
 
@@ -337,29 +309,32 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.sync.get(null, function (resultSyncUntyped) {
         const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
 
-        console.log(resultSync.wantTeams)
-
         chrome.storage.sync.set({
             autoPostWebhookAfterMeeting: resultSync.autoPostWebhookAfterMeeting === false ? false : true,
             autoDownloadFileAfterMeeting: resultSync.autoDownloadFileAfterMeeting === false ? false : true,
             operationMode: resultSync.operationMode === "manual" ? "manual" : "auto",
             hideCaptions: resultSync.hideCaptions === true ? true : false,
             webhookBodyType: resultSync.webhookBodyType === "advanced" ? "advanced" : "simple",
-            wantGoogleMeet: resultSync.wantGoogleMeet === false ? false : true,
-            wantTeams: resultSync.wantTeams === true ? true : false,
-            wantZoom: resultSync.wantZoom === true ? true : false
+            wantGoogleMeet: resultSync.wantGoogleMeet === false ? false : true
         }, function () {
             // Re-register content scripts whenever extension is installed or updated, provided permissions are available. Suppress notification for silent background operation.
             reRegisterContentScripts()
         })
-
-        checkAndCreateAlarm()
     })
 })
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === ALARM_NAME) {
-        console.log("Alarm triggered: Running daily check...")
-        // checkPermissionsAndOpenMeetingsPage()
+// Open the meetings page when a webhook failure notification is clicked. Registered once so listeners do not accumulate.
+// chrome.notifications is only defined once the optional "notifications" permission is granted, so this is also retried from permissions.onAdded.
+let isNotificationClickListenerRegistered = false
+function registerNotificationClickListener() {
+    if (isNotificationClickListenerRegistered || !chrome.notifications) {
+        return
     }
-})
+    chrome.notifications.onClicked.addListener(function (notificationId) {
+        if (notificationId.startsWith(WEBHOOK_FAILED_NOTIFICATION_PREFIX)) {
+            chrome.tabs.create({ url: "meetings.html" })
+        }
+    })
+    isNotificationClickListenerRegistered = true
+}
+registerNotificationClickListener()

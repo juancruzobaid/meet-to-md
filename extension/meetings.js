@@ -397,7 +397,7 @@ function handlePermissions() {
             console.log(scripts)
         })
 
-    chrome.storage.sync.get(["wantGoogleMeet", "wantTeams", "wantZoom"], function (resultSyncUntyped) {
+    chrome.storage.sync.get(["wantGoogleMeet"], function (resultSyncUntyped) {
         const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
 
         console.log(resultSync)
@@ -407,12 +407,6 @@ function handlePermissions() {
         //  Consider enabled if user has not explicitly opted out
         if (resultSync.wantGoogleMeet) {
             wantedPlatforms.push("google_meet")
-        }
-        if (resultSync.wantTeams) {
-            wantedPlatforms.push("teams")
-        }
-        if (resultSync.wantZoom) {
-            wantedPlatforms.push("zoom")
         }
 
         console.log(`Wanted platforms: ${wantedPlatforms}`)

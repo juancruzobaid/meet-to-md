@@ -36,13 +36,6 @@ export function processLastMeeting() {
                         Promise.all(promises)
                             .then(() => {
                                 resolve("Meeting processing and download/webhook posting complete")
-                                // Increment anonymous transcript generated count to a Google sheet
-                                // @ts-ignore - Because this line exists in the resolved promise from pickupLastMeetingFromStorage, which clearly means that at least one meeting exists and resultLocal.meetings cannot be undefined.
-                                const meetingSoftware = resultLocal.meetings[lastIndex].meetingSoftware
-                                const isWebhookEnabled = resultSync.webhookUrl && resultSync.autoPostWebhookAfterMeeting ? true : false
-                                fetch(`https://script.google.com/macros/s/AKfycbxK3Xd3u7ArtSEEUmu4jJSuJiyOHr5BtRqRGbcAy8Yc3zlVBTUoJ4wr-fJtQtlqRLGspg/exec?version=${chrome.runtime.getManifest().version}&isWebhookEnabled=${isWebhookEnabled}&meetingSoftware=${meetingSoftware}`, {
-                                    mode: "no-cors"
-                                })
                             })
                             .catch(error => {
                                 // Fails with error codes: 009, 010, 011, 012

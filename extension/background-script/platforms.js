@@ -166,7 +166,7 @@ export function registerContentScript(platform, showNotification = true) {
                                                         type: "basic",
                                                         iconUrl: "../icon.png",
                                                         title: "Enabled!",
-                                                        message: p === "google_meet" ? `Refresh any existing meeting pages` : ` ${p === "teams" ? `Join Teams meetings on the browser` : `Zoom meetings will automatically open in the browser`}. Refresh any existing pages.`
+                                                        message: "Refresh any existing Google Meet pages"
                                                     })
                                                 }
                                             })
@@ -247,100 +247,20 @@ export function deregisterContentScript(platform) {
 
 
 export function reRegisterContentScripts() {
-    chrome.storage.sync.get(["wantGoogleMeet", "wantTeams", "wantZoom"], function (resultSyncUntyped) {
+    chrome.storage.sync.get(["wantGoogleMeet"], function (resultSyncUntyped) {
         const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
 
-        /** @type {Promise<any>[]} */
-        const reRegisterPromises = []
-
-        /** @type {Platform[]} */
-        const wantedPlatforms = []
-
-        // Register content scripts if permissions are available and if user has not explicitly opted out
-        if (resultSync.wantGoogleMeet) {
-            wantedPlatforms.push("google_meet")
-        }
-        if (resultSync.wantTeams) {
-            wantedPlatforms.push("teams")
-        }
-        if (resultSync.wantZoom) {
-            wantedPlatforms.push("zoom")
-            reRegisterPromises.push(registerZoomRedirect())
+        // Register content script if permissions are available and if user has not explicitly opted out
+        if (!resultSync.wantGoogleMeet) {
+            return
         }
 
-        if (wantedPlatforms.length > 0) {
-            reRegisterPromises.push(registerContentScript(wantedPlatforms, false))
-        }
-
-        Promise.all(reRegisterPromises)
+        registerContentScript("google_meet", false)
             .then(() => {
                 console.log("Permitted scripts re-registered successfully.")
             })
             .catch((error) => {
                 console.log(error)
             })
-    })
-}
-
-
-export function registerZoomRedirect() {
-    return new Promise((resolve, reject) => {
-        // Check if we have the host permission required for the redirect
-        chrome.permissions.contains({
-            origins: ["https://*.zoom.us/*"]
-        }).then((hasHostPermission) => {
-            if (hasHostPermission) {
-                // Check if the ruleset is already enabled to avoid redundant updates
-                chrome.declarativeNetRequest.getEnabledRulesets().then((enabledRulesets) => {
-                    const rulesetId = "ruleset_1"
-
-                    if (enabledRulesets.includes(rulesetId)) {
-                        console.log("Zoom redirect ruleset already active")
-                        resolve("Zoom redirect already active")
-                    }
-                    else {
-                        // Enable the ruleset
-                        chrome.declarativeNetRequest.updateEnabledRulesets({
-                            enableRulesetIds: [rulesetId]
-                        }).then(() => {
-                            console.log("Zoom redirect ruleset enabled successfully")
-                            resolve("Zoom redirect registered")
-                        }).catch((error) => {
-                            console.error("Failed to enable DNR ruleset:", error)
-                            reject("Failed to enable redirect ruleset")
-                        })
-                    }
-                })
-            }
-            else {
-                reject("Insufficient permissions")
-                return
-            }
-        })
-    })
-}
-
-export function deregisterZoomRedirect() {
-    return new Promise((resolve, reject) => {
-        const rulesetId = "ruleset_1"
-
-        chrome.declarativeNetRequest.getEnabledRulesets().then((enabledRulesets) => {
-            if (!enabledRulesets.includes(rulesetId)) {
-                console.log("Zoom redirect ruleset already disabled")
-                resolve("Zoom redirect already disabled")
-            }
-            else {
-                // Disable the ruleset
-                chrome.declarativeNetRequest.updateEnabledRulesets({
-                    disableRulesetIds: [rulesetId]
-                }).then(() => {
-                    console.log("Zoom redirect ruleset disabled successfully")
-                    resolve("Zoom redirect deregistered")
-                }).catch((error) => {
-                    console.error("Failed to disable DNR ruleset:", error)
-                    reject("Failed to disable redirect ruleset")
-                })
-            }
-        })
     })
 }

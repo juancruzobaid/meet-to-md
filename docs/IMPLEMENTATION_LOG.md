@@ -44,6 +44,47 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-11-19 15:45 - Remove Zoom/Teams, dead code and upstream telemetry; fix download and notification bugs
+
+**Task received:** Step 1 of 2 (Firefox comes later). Remove all Zoom/Teams support, dead alarm/permission-check code and upstream telemetry; fix the un-awaited download fallback and the accumulating webhook-notification click listener. Rename the extension to "Meet to MD".
+
+**Files deleted:**
+- `extension/content-scripts/teams/` (config.js, index.js, utils.js)
+- `extension/content-scripts/zoom/` (config.js, index.js, utils.js)
+- `extension/rules.json` — Zoom redirect DNR ruleset
+
+**Files modified:**
+- `extension/manifest.json` — name "Meet to MD", new description; removed `declarativeNetRequestWithHostAccess` and `alarms` permissions, `declarative_net_request` block and Zoom/Teams optional host permissions (kept `*://*/*` for the webhook); added `web_accessible_resources` exposing `icon.png` to `https://meet.google.com/*` (replaces the remote logo).
+- `extension/background-script/config.js` — `PLATFORM_CONFIGS` only has `google_meet`; removed `ALARM_NAME` / `INTERVAL_IN_MINUTES`.
+- `extension/background-script/platforms.js` — removed `registerZoomRedirect` / `deregisterZoomRedirect`; `reRegisterContentScripts` is Meet-only (still respects `wantGoogleMeet`); Meet-only registration notification text.
+- `extension/background-script/index.js` — removed Zoom redirect / alarm imports and `hasZoom` branches, the `chrome.alarms.onAlarm` listener, commented-out `checkPermissionsAndOpenMeetingsPage` timeouts, `wantTeams` / `wantZoom` defaults and the stray `console.log`. `permissions.onAdded` de-registers then (chained) re-registers only google_meet. New single top-level `chrome.notifications.onClicked` listener (registered once; retried on `permissions.onAdded` because `chrome.notifications` only exists once the optional permission is granted) that opens `meetings.html` for ids starting with `webhook-failed-`.
+- `extension/background-script/exporters.js` — `downloadTranscript`: fallback download is chained, resolves only after it succeeds, rejects `{ errorCode: "009", errorMessage }` if it fails; log text no longer mentions "TranscripTonic directory"; removed `script.google.com` error-logging fetch. `postTranscriptToWebhook`: no per-call `onClicked` listener; notification created with id `webhook-failed-<timestamp>` and only if `chrome.permissions.contains({ permissions: ["notifications"] })`. Exports `WEBHOOK_FAILED_NOTIFICATION_PREFIX`.
+- `extension/background-script/meetings.js` — removed `script.google.com` "transcript generated" counter fetch.
+- `extension/background-script/utils.js` — removed `checkAndCreateAlarm` and `checkPermissionsAndOpenMeetingsPage`.
+- `extension/content-scripts/common-config.js` — removed `LOG_ERROR_SCRIPT_URL`, remote status URLs and Teams/Zoom notification configs; `LOGO_URL` is now `chrome.runtime.getURL("icon.png")`.
+- `extension/content-scripts/common-utils.js` — `checkExtensionStatus` is local only (no fetch to the upstream status/kill-switch JSON); `logError` logs to console only; removed Teams/Zoom branches in the transcript monitor and hide-captions code; FAB uses the bundled logo; removed unused `meetsMinVersion`.
+- `extension/popup/index.html`, `extension/popup/popup.js` — removed Teams/Zoom toggles, commented-out beta banner and its CSS.
+- `extension/meetings.js` — permission check only considers `wantGoogleMeet`.
+- `types/index.js` — `Platform` = `"google_meet"`, `MeetingSoftware` without Zoom/Teams, removed `WantTeams` / `WantZoom` / `showBetaMessage`.
+- `extension-unpacked.zip` — rebuilt from `extension/`.
+
+**Tests performed:**
+- `node --check` on every .js under `extension/` (background-script files as ES modules) → no syntax errors
+- `grep -rniE "zoom|teams|declarativeNetRequest|alarms|script\.google\.com" extension/ types/index.js` → no matches
+- Only remaining `fetch(` is the user webhook; only remote URLs left are hyperlinks and Google Fonts on extension pages
+- Every named import in `background-script/` resolves to an existing export; every file in `PLATFORM_CONFIGS.google_meet.js` exists; `manifest.json` is valid JSON
+- Node script with a mocked `chrome` API: download fallback resolves after the second download succeeds; rejects `009` when both fail; webhook failure creates `webhook-failed-<ts>` notification only when the permission is granted
+- Not tested in a browser — owner to verify in Día
+
+**Final result:** Meet-only extension named "Meet to MD" with no outbound requests other than Meet and the user's webhook. MD export format and filename unchanged.
+
+**Business Logic updated:** yes — System Overview (Meet only, network & privacy rules), Caption Capture (popup enable toggle), Export (fallback behaviour), Webhook (notification behaviour)
+**Master Plan updated:** yes — cleanup moved to Completed, Zoom/Teams moved to Decided Against, Firefox compatibility added as In Progress
+
+**Next step:** Step 2 — Firefox compatibility.
+
+---
+
 ### 2026-11-11 — Re-port onto upstream v3.4.5 - batch 1: MD export
 
 **Task received:** Re-port the Markdown export onto a clean copy of upstream v3.4.5 (branch `rebase-v3.4.5`). Keep diffs to upstream files minimal; our logic lives in new files, upstream files are touched only at call sites.

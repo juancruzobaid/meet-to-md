@@ -1,8 +1,8 @@
 /**
- * @typedef {"Google Meet" | "Zoom" | "Teams" | "" | undefined} MeetingSoftware Human friendly meeting software name.
+ * @typedef {"Google Meet" | "" | undefined} MeetingSoftware Human friendly meeting software name.
  */
 /**
- * @typedef {"google_meet" | "teams" | "zoom"} Platform Meeting platform
+ * @typedef {"google_meet"} Platform Meeting platform
  */
 /**
  * @typedef {number | "processing" | null} MeetingTabId tab id of the meeting tab, captured when meeting starts. A valid value or "processing" indicates that a meeting is in progress. Set to null once meeting ends and associated processing is complete.
@@ -44,12 +44,6 @@
 /**
  * @typedef {boolean} WantGoogleMeet Indicates whether user explicitly opted in for Google Meet. Does not necessarily mean Google Meet is enabled for them. Only an indicator to re-inject content scripts between reloads.
  */
-/**
- * @typedef {boolean} WantTeams Indicates whether user explicitly opted in for Teams. Does not necessarily mean Teams is enabled for them. Only an indicator to re-inject content scripts between reloads.
- */
-/**
- * @typedef {boolean} WantZoom Indicates whether user explicitly opted in for Zoom. Does not necessarily mean Zoom is enabled for them. Only an indicator to re-inject content scripts between reloads.
- */
 
 
 
@@ -85,7 +79,6 @@
  * @typedef {Object} ExtensionStatusJSON
  * @property {number} status status of the extension
  * @property {string} message message of the status
- * @property {boolean} [showBetaMessage] show beta enablement
 */
 /**
  * @typedef {Object} Meeting
@@ -174,8 +167,6 @@
  * @property {WebhookBodyType} webhookBodyType
  * @property {WebhookUrl} webhookUrl
  * @property {WantGoogleMeet} wantGoogleMeet
- * @property {WantTeams} wantTeams
- * @property {WantZoom} wantZoom
  * @property {string} defaultLanguage default caption language code (meet-to-md)
  * @property {string} meetingLanguage caption language code for the current meeting, reset per meeting (meet-to-md)
 */
@@ -192,7 +183,7 @@
 // | **005** | "Transcript mutation failed to process" |
 // | **006** | "Chat messages mutation failed to process" |
 // | **007** | "Meeting title element not found in DOM" (currently not in use) |
-// | **008** | "Failed to fetch extension status" |
+// | **008** | "Failed to fetch extension status" (no longer in use, remote status check removed) |
 // | **016** | "Recovery timed out" |
 
 // BACKGROUND SCRIPT ERRORS

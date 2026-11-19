@@ -1,7 +1,7 @@
 # Meet to MD — Project Context
 
 ## Project Purpose
-Chrome extension (public fork of TranscripTonic) that captures Google Meet live captions and saves them as structured Markdown files ready for Obsidian. Adds a configurable save folder and a one-click language toggle. The DOM scraping engine is inherited from upstream and kept in sync via `git merge upstream/main`.
+Chrome extension (public fork of TranscripTonic) that captures Google Meet live captions (Google Meet only — upstream Zoom/Teams support was removed on 2026-11-19) and saves them as structured Markdown files ready for Obsidian. Adds a configurable save folder and a one-click language toggle. The DOM scraping engine is inherited from upstream and kept in sync via `git merge upstream/main`.
 
 ## CoordinatorMCP
 - **project_id:** meet-to.md
@@ -11,7 +11,8 @@ Chrome extension (public fork of TranscripTonic) that captures Google Meet live 
 - **Repo:** https://github.com/vivek-nexus/transcriptonic
 - **License:** MIT
 - **Sync command:** `git fetch upstream && git merge upstream/main`
-- **Do not modify:** `content-google-meet.js`, `background.js` (except export function), `content-teams.js`, `content-zoom.js`, `types/`
+- **Do not modify:** Google Meet capture logic in `extension/content-scripts/google-meet/`, `types/chrome.d.ts`
+- **Removed from upstream (expect merge conflicts / re-deletions on sync):** `extension/content-scripts/teams/`, `extension/content-scripts/zoom/`, `extension/rules.json` (Zoom redirect), Teams/Zoom entries in `PLATFORM_CONFIGS` and the manifest, the `alarms` and `declarativeNetRequestWithHostAccess` permissions, all upstream telemetry (`script.google.com` logging) and the remote status check / remote logo (`ejnana.github.io`)
 
 ## Current Technology Stack
 - **Extension type:** Chrome Extension Manifest V3
@@ -112,6 +113,11 @@ language-switcher.js            ← NEW — triggers Meet language change via DO
 - **File names:** kebab-case
 - **No frameworks:** vanilla JS only (matches upstream)
 - **Comments:** English, match upstream comment style
+
+## Network & Privacy
+- The extension only talks to `meet.google.com` (content script) and the user-configured webhook URL. No telemetry, remote error logging or remote status/kill-switch checks.
+- The in-page logo is the bundled `icon.png`, exposed to `https://meet.google.com/*` via `web_accessible_resources`.
+- Extension pages (popup, meetings, side panel) still load the TASA Explorer font from Google Fonts (inherited from upstream).
 
 ## Known Technical Debt
 - `chrome.downloads` API saves to a fixed Downloads folder — File System Access API (Phase 3) will allow saving directly to Obsidian vault

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TranscripTonic",
+  "name": "Meet to MD",
   "version": "3.4.5",
-  "description": "Simple Google Meet transcripts. Private and open source.",
+  "description": "Google Meet transcripts as Markdown. Private and open source.",
   "action": {
     "default_icon": "icon.png",
     "default_popup": "popup/index.html"
@@ -17,8 +17,6 @@
     "storage",
     "downloads",
     "scripting",
-    "declarativeNetRequestWithHostAccess",
-    "alarms",
     "sidePanel"
   ],
   "host_permissions": [
@@ -28,29 +26,20 @@
     "notifications"
   ],
   "optional_host_permissions": [
-    "*://*/*",
-    "https://*.zoom.us/",
-    "https://teams.live.com/*",
-    "https://teams.microsoft.com/*",
-    "https://teams.cloud.microsoft/*",
-    "https://teams.microsoft.com.mcas.ms/*",
-    "https://teams.cloud.microsoft.mcas.ms/*",
-    "https://teams.microsoft.com.mcas-gov.us/*",
-    "https://teams.cloud.microsoft.mcas-gov.us/*",
-    "https://teams.microsoft.com.mcas-gov.ms/*",
-    "https://teams.cloud.microsoft.mcas-gov.ms/*"
+    "*://*/*"
   ],
   "background": {
     "service_worker": "background-script/index.js",
     "type": "module"
   },
-  "declarative_net_request": {
-    "rule_resources": [
-      {
-        "id": "ruleset_1",
-        "enabled": false,
-        "path": "rules.json"
-      }
-    ]
-  }
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon.png"
+      ],
+      "matches": [
+        "https://meet.google.com/*"
+      ]
+    }
+  ]
 }

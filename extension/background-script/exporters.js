@@ -2,6 +2,9 @@ import { getTranscriptString, getChatMessagesString } from './utils.js'
 import { TIMEFORMAT } from './config.js'
 import { generateMdFilename, generateMdContent } from './md-generator.js'
 
+// Webhook failure notifications are created with ids starting with this prefix, so a single onClicked listener (index.js) can route them
+export const WEBHOOK_FAILED_NOTIFICATION_PREFIX = "webhook-failed-"
+
 /**
  * @param {number} index
  * @param {boolean} [isWebhookEnabled]
@@ -43,17 +46,20 @@ export function downloadTranscript(index, isWebhookEnabled) {
                             resolve("Transcript downloaded successfully")
                         }).catch((err) => {
                             console.error(err)
-                            chrome.downloads.download({
+                            console.log("Invalid file name. Retrying download to meet-to-md directory with simple file name.")
+                            // Fallback download with a safe file name. Resolve only once it succeeds.
+                            return chrome.downloads.download({
                                 // @ts-ignore
                                 url: dataUrl,
                                 filename: "meet-to-md/Meeting.md",
                                 conflictAction: "uniquify"
+                            }).then(() => {
+                                console.log("Transcript downloaded with default file name")
+                                resolve("Transcript downloaded successfully with default file name")
+                            }).catch((fallbackErr) => {
+                                console.error(fallbackErr)
+                                reject({ errorCode: "009", errorMessage: String(fallbackErr) })
                             })
-                            console.log("Invalid file name. Transcript downloaded to TranscripTonic directory with simple file name.")
-                            resolve("Transcript downloaded successfully with default file name")
-
-                            // Logs anonymous errors to a Google sheet for swift debugging   
-                            fetch(`https://script.google.com/macros/s/AKfycbz0VFUYIke1WK12Q-8y-zQ91bOPRZ8dAL4cRpm309IYZO0k6uYDkTSlfbWFaGvUV_Z-JQ/exec?version=${chrome.runtime.getManifest().version}&code=009&error=${encodeURIComponent(err)}&meetingSoftware=${meeting.meetingSoftware}`, { mode: "no-cors" })
                         })
                     }
                     else {
@@ -133,19 +139,18 @@ export function postTranscriptToWebhook(index) {
                             // @ts-ignore - Pointless type error about resultLocal.meetings being undefined, which is already checked above.
                             resultLocal.meetings[index].webhookPostStatus = "failed"
                             chrome.storage.local.set({ meetings: resultLocal.meetings }, function () {
-                                // Create notification and open webhooks page
-                                chrome.notifications.create({
-                                    type: "basic",
-                                    iconUrl: "icon.png",
-                                    title: "Could not post webhook!",
-                                    message: "Click to view status and retry. Check console for more details."
-                                }, function (notificationId) {
-                                    // Handle notification click
-                                    chrome.notifications.onClicked.addListener(function (clickedNotificationId) {
-                                        if (clickedNotificationId === notificationId) {
-                                            chrome.tabs.create({ url: "meetings.html" })
-                                        }
-                                    })
+                                // Create notification, only if the optional permission is granted. Click is handled by the listener in index.js, which opens the meetings page.
+                                chrome.permissions.contains({ permissions: ["notifications"] }).then((hasNotifyPermission) => {
+                                    if (hasNotifyPermission) {
+                                        chrome.notifications.create(`${WEBHOOK_FAILED_NOTIFICATION_PREFIX}${Date.now()}`, {
+                                            type: "basic",
+                                            iconUrl: "icon.png",
+                                            title: "Could not post webhook!",
+                                            message: "Click to view status and retry. Check console for more details."
+                                        })
+                                    }
+                                }).catch((permissionError) => {
+                                    console.error(permissionError)
                                 })
                                 reject({ errorCode: "011", errorMessage: error })
                             })
