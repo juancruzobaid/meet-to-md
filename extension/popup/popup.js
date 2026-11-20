@@ -17,7 +17,7 @@ window.onload = function () {
   const hideCaptionsToggle = /** @type {HTMLInputElement} */ (document.querySelector("#hide-captions"))
 
   if (versionElement) {
-    versionElement.innerHTML = `v${chrome.runtime.getManifest().version}`
+    versionElement.textContent = `v${chrome.runtime.getManifest().version}`
   }
 
   chrome.storage.sync.get(["operationMode"], function (resultSyncUntyped) {
@@ -51,52 +51,79 @@ window.onload = function () {
   })
 
   /**
-   * Syncs checkbox UI with actual background script registration status
-   * @param {HTMLInputElement} element 
-   * @param {Platform} platform 
+   * Syncs the Google Meet checkbox with the content script registration status, and shows a warning with a
+   * "Grant access" button when the browser does not grant Meet access (Firefox treats host permissions as optional and
+   * the user can revoke them at any time).
+   * @param {HTMLInputElement} element
    */
-  function syncPlatformStatus(element, platform) {
-    /** @type {ExtensionMessage} */
-    const message = {
-      type: "get_platform_enablement_status",
-      platform: platform
-    }
-    chrome.runtime.sendMessage(message, (responseUntyped) => {
-      const response = /** @type {ExtensionResponse} */ (responseUntyped)
-      if (response && response.success) {
-        element.checked = response.message === "Enabled"
-      }
-    })
+  function syncGoogleMeetStatus(element) {
+    const accessWarning = document.querySelector("#meet-access-warning")
+    const grantAccessButton = document.querySelector("#grant-meet-access")
 
-    element.addEventListener("change", () => {
-      const type = element.checked ? "enable_platform" : "disable_platform"
-
-      switch (platform) {
-        case "google_meet":
-          chrome.storage.sync.set({ wantGoogleMeet: element.checked }, function () { })
-          break
-        default:
-          break
-      }
-
+    function refresh() {
       /** @type {ExtensionMessage} */
       const message = {
-        type: type,
-        platform: platform
+        type: "get_platform_enablement_status",
+        platform: "google_meet"
       }
       chrome.runtime.sendMessage(message, (responseUntyped) => {
         const response = /** @type {ExtensionResponse} */ (responseUntyped)
-        if (!response.success) {
-          element.checked = !element.checked // Revert on failure
-          console.error(`Failed to toggle ${platform}:`, response.message)
+        if (response && response.success) {
+          element.checked = response.message === "Enabled"
         }
       })
+
+      hasGoogleMeetAccess().then((hasAccess) => {
+        accessWarning?.toggleAttribute("hidden", hasAccess)
+      }).catch((error) => {
+        console.error(error)
+      })
+    }
+
+    // Must be called synchronously from a click handler (Firefox user-gesture rule for permissions.request)
+    function enable() {
+      requestGoogleMeetAccess()
+        .catch((error) => {
+          console.error("Failed to enable google_meet:", error)
+        })
+        .finally(() => {
+          refresh()
+        })
+    }
+
+    refresh()
+
+    // "click" rather than "change", so the permission request runs inside the user-gesture handler. The checkbox is already toggled when click listeners run (also for keyboard and label activation).
+    element.addEventListener("click", () => {
+      if (element.checked) {
+        enable()
+        return
+      }
+
+      chrome.storage.sync.set({ wantGoogleMeet: false }, function () { })
+
+      /** @type {ExtensionMessage} */
+      const message = {
+        type: "disable_platform",
+        platform: "google_meet"
+      }
+      chrome.runtime.sendMessage(message, (responseUntyped) => {
+        const response = /** @type {ExtensionResponse} */ (responseUntyped)
+        if (!response || !response.success) {
+          console.error("Failed to disable google_meet:", response?.message)
+        }
+        refresh()
+      })
+    })
+
+    grantAccessButton?.addEventListener("click", () => {
+      enable()
     })
   }
 
   // Initialize Toggles
   if (googleMeetToggle) {
-    syncPlatformStatus(googleMeetToggle, "google_meet")
+    syncGoogleMeetStatus(googleMeetToggle)
   }
 
   // notice?.addEventListener("click", () => {

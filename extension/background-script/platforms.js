@@ -45,34 +45,6 @@ export function getPermissionStatus(platform) {
 /**
  * @param {Platform|Platform[]} platform
  */
-export function requestPlatformPermission(platform) {
-    return new Promise((resolve, reject) => {
-        const platforms = Array.isArray(platform) ? platform : [platform]
-
-        // Map each platform to its config, then flatten the resulting nested arrays
-        const allOrigins = platforms.flatMap(p => PLATFORM_CONFIGS[p]?.matches || [])
-        const allPermissions = platforms.flatMap(p => PLATFORM_CONFIGS[p]?.permissions || [])
-
-        // Use Set to handle duplicates
-        const request = {
-            origins: [...new Set(allOrigins)],
-            permissions: [...new Set(allPermissions)]
-        }
-
-        chrome.permissions.request(request)
-            .then((granted) => {
-                granted ? resolve("Permissions granted") : reject("Permissions denied")
-            })
-            .catch((error) => {
-                console.error(error)
-                reject(`Could not get permissions for ${platforms.join(", ")}`)
-            })
-    })
-}
-
-/**
- * @param {Platform|Platform[]} platform
- */
 export function getContentScriptStatus(platform) {
     /**
     * @param {string} p
@@ -164,7 +136,7 @@ export function registerContentScript(platform, showNotification = true) {
                                                 if (hasNotifyPermission) {
                                                     chrome.notifications.create({
                                                         type: "basic",
-                                                        iconUrl: "../icon.png",
+                                                        iconUrl: chrome.runtime.getURL("icon.png"),
                                                         title: "Enabled!",
                                                         message: "Refresh any existing Google Meet pages"
                                                     })

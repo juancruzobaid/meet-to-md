@@ -17,12 +17,14 @@
 ---
 
 ## System Overview
-Meet to MD is a Chrome extension that captures Google Meet captions in real time and saves them as Markdown files. It is a fork of TranscripTonic with added Obsidian-friendly output. **Google Meet is the only supported platform** (upstream Zoom/Teams support was removed). All processing is local — no data leaves the device except to the webhook URL the user configures.
+Meet to MD is a browser extension that captures Google Meet captions in real time and saves them as Markdown files. It is a fork of TranscripTonic with added Obsidian-friendly output. **Google Meet is the only supported platform** (upstream Zoom/Teams support was removed). One codebase and one manifest run in **Chromium browsers (Chrome, Día)** and **Firefox ≥140 / Zen**. All processing is local — no data leaves the device except to the webhook URL the user configures.
 
 ### Network & privacy rules
 - Network requests only go to `meet.google.com` (the page itself) and the user-configured webhook URL
 - No telemetry, analytics, remote error logging or remote status/kill-switch check (all upstream ones removed)
 - The in-page notification logo is the bundled extension icon, not a remote image
+- The UI font (TASA Explorer, OFL) is bundled in `extension/fonts/`; extension pages make no requests to Google Fonts
+- Firefox: `data_collection_permissions` declares `required: ["none"]` and `optional: ["personalCommunications", "websiteContent"]`; the optional consent is requested only when the user sets up / reposts a webhook
 
 ## User Roles
 ### Extension user (meeting participant)
@@ -40,12 +42,17 @@ Meet to MD is a Chrome extension that captures Google Meet captions in real time
 - Auto mode: extension captures all meetings automatically when CC is active
 - Manual mode: user controls when capture starts by enabling CC manually
 - Enable/disable Google Meet capture from the popup checkbox (requests the Meet host + notifications permissions and registers the content script; preference stored as `wantGoogleMeet`)
+- See a warning with a **Grant access** button in the popup (and a banner on the meetings page) whenever Google Meet access is not granted (Firefox treats host permissions as optional and lets the user revoke them)
+- Open the live transcript panel: in Chromium the in-page button opens the side panel; in Firefox the sidebar must be opened from the browser's sidebar menu (the in-page button shows a hint, because Firefox only opens sidebars from a user action in browser UI)
 
 **Business rules:**
 - Capture only works when Google Meet captions (CC) are active
 - Speaker name defaults to "You" if the user's name cannot be resolved before meeting starts
 - When the same speaker talks for >30 min without pause, Meet drops the buffer — extension detects this and saves the long block before it's lost
 - Transcript recovery runs on page load to recover any missed transcript from the previous meeting
+- Permissions are requested synchronously in the click handler of the popup / meetings page (Firefox user-gesture rule); the background only registers the content script. `wantGoogleMeet: true` is saved before the prompt, so `permissions.onAdded` registers the script even if the Firefox popup closes during the prompt
+- The content script is re-registered on install/update, on browser startup (`runtime.onStartup`) and when permissions are added, if the user has not opted out
+- The meeting tab is the tab that sent `new_meeting_started` (active-tab query only as fallback); closing it triggers processing
 
 **Connections:** Writes to `chrome.storage.local` → triggers Background export on meeting end
 
@@ -62,6 +69,7 @@ Meet to MD is a Chrome extension that captures Google Meet captions in real time
 - File saved to `meet-to-md/` subfolder in the browser's default Downloads directory
 - Filename format: `meet-to-md/YYYY-MM-DD [Meeting Title].md`
 - If filename is invalid, falls back to `meet-to-md/Meeting.md`; the download is reported as successful only once the fallback download succeeds, otherwise it fails with error `009`
+- Chromium (service worker) downloads a `data:` URL; Firefox (background page, rejects `data:` URLs) downloads a `blob:` URL that is revoked when the download completes or is interrupted (5-minute safety timeout)
 - Last 10 meetings are kept in storage; older ones are dropped
 - YAML frontmatter includes: date, meeting_id, language, participants, duration_minutes, source
 - Participants are deduplicated and sorted alphabetically from transcript speaker names
@@ -151,6 +159,7 @@ source: Google Meet captions
 - Advanced body: transcript and chatMessages as raw arrays of objects
 - Failed webhooks are flagged in meeting history for manual retry
 - On failure, a desktop notification "Could not post webhook!" is shown only if the optional `notifications` permission is granted; clicking it opens the meetings page (one shared click handler, notification ids prefixed `webhook-failed-`)
+- Saving a webhook URL or reposting requests the webhook host + `notifications` permissions in the click/submit handler; in Firefox the same prompt also asks for the optional data-collection consent (`personalCommunications`, `websiteContent`). Denying keeps the webhook unsaved / not posted
 
 ---
 

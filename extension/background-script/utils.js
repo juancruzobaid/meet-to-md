@@ -54,45 +54,103 @@ export function clearTabIdAndApplyUpdate() {
 
 /**
  * Opens the extension popup programmatically.
+ * action.openPopup() is missing or user-gesture gated in some browsers (Firefox), so failures resolve to a clean rejection.
  */
 export function openExtensionPopup() {
     return new Promise((resolve, reject) => {
-        chrome.action.openPopup()
-            .then(() => {
-                console.log("Popup opened successfully")
-                resolve("Popup opened")
-            })
-            .catch((error) => {
-                console.error("Failed to open popup:", error)
-                reject("Failed to open popup")
-            })
+        if (!chrome.action || (typeof chrome.action.openPopup !== "function")) {
+            reject("Opening the popup is not supported in this browser")
+            return
+        }
+
+        try {
+            chrome.action.openPopup()
+                .then(() => {
+                    console.log("Popup opened successfully")
+                    resolve("Popup opened")
+                })
+                .catch((error) => {
+                    console.error("Failed to open popup:", error)
+                    reject("Failed to open popup")
+                })
+        } catch (error) {
+            console.error("Failed to open popup:", error)
+            reject("Failed to open popup")
+        }
     })
 }
 
 /**
- * Opens the side panel programmatically for the active tab
+ * Opens the transcript side panel (Chromium) or sidebar (Firefox) for the given tab, falling back to the active tab.
+ * Never throws: always settles the promise.
+ * - Chromium: chrome.sidePanel.open()
+ * - Firefox: sidebarAction.open() is only allowed inside a user-action handler, and a message from a content script is not one, so it usually fails. It then rejects with error code 017, and the content script tells the user to open the sidebar from the browser's sidebar menu.
+ * @param {chrome.tabs.Tab} [senderTab] tab that asked for the panel (the Meet tab)
+ * @returns {Promise<string>}
  */
-export function openSidePanel() {
+export function openSidePanel(senderTab) {
     return new Promise((resolve, reject) => {
-        // Get the current active tab
+        // Firefox sidebar
+        // @ts-ignore - browser and sidebarAction exist only in Firefox
+        const sidebarAction = (typeof browser !== "undefined" && browser.sidebarAction) || chrome.sidebarAction
+        if (!chrome.sidePanel && sidebarAction && (typeof sidebarAction.open === "function")) {
+            /** @type {ErrorObject} */
+            const sidebarError = { errorCode: "017", errorMessage: "Open the Meet to MD sidebar from the browser sidebar menu" }
+            try {
+                Promise.resolve(sidebarAction.open())
+                    .then(() => {
+                        console.log("Sidebar opened successfully")
+                        resolve("Sidebar opened")
+                    })
+                    .catch((/** @type {any} */ error) => {
+                        console.log("Could not open sidebar programmatically:", error)
+                        reject(sidebarError)
+                    })
+            } catch (error) {
+                console.log("Could not open sidebar programmatically:", error)
+                reject(sidebarError)
+            }
+            return
+        }
+
+        if (!chrome.sidePanel || (typeof chrome.sidePanel.open !== "function")) {
+            reject({ errorCode: "018", errorMessage: "Side panel is not supported in this browser" })
+            return
+        }
+
+        /** @param {number} tabId */
+        const openForTab = (tabId) => {
+            try {
+                chrome.sidePanel.open({ tabId: tabId })
+                    .then(() => {
+                        console.log("Side panel opened successfully")
+                        resolve("Side panel opened")
+                    })
+                    .catch((error) => {
+                        console.error("Failed to open side panel:", error)
+                        reject({ errorCode: "018", errorMessage: "Failed to open side panel" })
+                    })
+            } catch (error) {
+                console.error("Failed to open side panel:", error)
+                reject({ errorCode: "018", errorMessage: "Failed to open side panel" })
+            }
+        }
+
+        // Open synchronously for the sender tab when known, so the user gesture from the in-page button is preserved
+        if (senderTab && (typeof senderTab.id === "number")) {
+            openForTab(senderTab.id)
+            return
+        }
+
+        // Fallback: the current active tab
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const activeTab = tabs[0]
-            if (!activeTab || !activeTab.id) {
+            if (!activeTab || (typeof activeTab.id !== "number")) {
                 console.error("No active tab found.")
-                reject("No active tab found")
+                reject({ errorCode: "018", errorMessage: "No active tab found" })
                 return
             }
-
-            // Open the side panel targeting that specific tab ID
-            chrome.sidePanel.open({ tabId: activeTab.id })
-                .then(() => {
-                    console.log("Side panel opened successfully")
-                    resolve("Side panel opened")
-                })
-                .catch((error) => {
-                    console.error("Failed to open side panel:", error)
-                    reject("Failed to open side panel")
-                })
+            openForTab(activeTab.id)
         })
     })
 }

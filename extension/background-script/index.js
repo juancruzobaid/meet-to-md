@@ -2,7 +2,6 @@ import { processLastMeeting, recoverLastMeeting } from "./meetings.js"
 import { downloadTranscript, postTranscriptToWebhook, WEBHOOK_FAILED_NOTIFICATION_PREFIX } from "./exporters.js"
 import {
     getPermissionStatus,
-    requestPlatformPermission,
     getContentScriptStatus,
     registerContentScript,
     deregisterContentScript,
@@ -14,18 +13,45 @@ import {
     openSidePanel
 } from "./utils.js"
 
+/** @type {ExtensionMessage["type"][]} */
+const ASYNC_RESPONSE_MESSAGE_TYPES = [
+    "meeting_ended",
+    "download_transcript_at_index",
+    "post_webhook_at_index",
+    "recover_last_meeting",
+    "get_platform_enablement_status",
+    "get_platform_permission_status",
+    "enable_platform",
+    "disable_platform",
+    "open_popup",
+    "open_side_panel"
+]
+
 chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendResponse) {
     const message = /** @type {ExtensionMessage} */ (messageUnTyped)
     console.log(message.type)
 
     if (message.type === "new_meeting_started") {
-        // Saving current tab id, to download transcript when this tab is closed
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            const tabId = tabs[0].id
+        // Saving the meeting tab id, to download transcript when this tab is closed. The sender tab is the Meet tab itself; the active tab query is only a fallback.
+        /** @param {number | undefined} tabId */
+        const saveMeetingTabId = (tabId) => {
+            if (typeof tabId !== "number") {
+                console.error("Could not determine meeting tab id")
+                return
+            }
             chrome.storage.local.set({ meetingTabId: tabId }, function () {
                 console.log("Meeting tab id saved")
             })
-        })
+        }
+
+        if (sender.tab && (typeof sender.tab.id === "number")) {
+            saveMeetingTabId(sender.tab.id)
+        }
+        else {
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                saveMeetingTabId(tabs[0]?.id)
+            })
+        }
     }
 
     if (message.type === "meeting_ended") {
@@ -166,29 +192,19 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
         /** @type {Platform | Platform[]} */
         let platform = message.platform || "google_meet"
 
-        requestPlatformPermission(platform).then(() => {
-            // After permissions are granted, register the content script
-            registerContentScript(platform).then((result) => {
-                /** @type {ExtensionResponse} */
-                const response = { success: true, message: result }
-                sendResponse(response)
-            }).catch((error) => {
-                // Fails with error codes: not defined
-                const parsedError = /** @type {ErrorObject} */ (error)
+        // Permissions are requested by the UI (shared/meet-access.js) inside the click handler, because Firefox only allows permissions.request() during a user gesture, which does not survive this message hop. Here we only register the content script; it fails with "Insufficient permissions" if access was not granted.
+        registerContentScript(platform).then((result) => {
+            /** @type {ExtensionResponse} */
+            const response = { success: true, message: result }
+            sendResponse(response)
+        }).catch((error) => {
+            // Fails with error codes: not defined
+            const parsedError = /** @type {ErrorObject} */ (error)
 
-                /** @type {ExtensionResponse} */
-                const response = { success: false, message: parsedError }
-                sendResponse(response)
-            })
+            /** @type {ExtensionResponse} */
+            const response = { success: false, message: parsedError }
+            sendResponse(response)
         })
-            .catch((error) => {
-                // Fails with error codes: not defined
-                const parsedError = /** @type {ErrorObject} */ (error)
-
-                /** @type {ExtensionResponse} */
-                const response = { success: false, message: parsedError }
-                sendResponse(response)
-            })
     }
 
     if (message.type === "disable_platform") {
@@ -228,7 +244,7 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
     if (message.type === "open_side_panel") {
         /** @type {Platform} */
 
-        openSidePanel().then((message) => {
+        openSidePanel(sender.tab).then((message) => {
             /** @type {ExtensionResponse} */
             const response = { success: true, message: message }
             sendResponse(response)
@@ -241,8 +257,8 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
         })
     }
 
-
-    return true
+    // Keep the message channel open only for messages answered asynchronously above. Returning true for everything (e.g. the frequent broadcast_live_buffer, which only the side panel consumes) leaves the sender's response pending forever.
+    return ASYNC_RESPONSE_MESSAGE_TYPES.includes(message.type)
 })
 
 // Download last meeting if meeting tab is closed
@@ -282,6 +298,11 @@ chrome.runtime.onUpdateAvailable.addListener(() => {
             chrome.runtime.reload()
         }
     })
+})
+
+// Re-register on browser start, as a backup in case registered content scripts were not persisted (e.g. Firefox profile or session restore edge cases). No-op if already registered or if the user opted out.
+chrome.runtime.onStartup.addListener(() => {
+    reRegisterContentScripts()
 })
 
 // Re-register the Google Meet content script whenever runtime permissions change—mostly serves as a backup for changes made outside the UI.

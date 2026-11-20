@@ -1,9 +1,9 @@
 /** @type {ExtensionStatusJSON} */
 const extensionStatusJSON_bug = {
     "status": 400,
-    "message": `<strong>TranscripTonic encountered a new error</strong> <br /> Please report it <a href="https://github.com/vivek-nexus/transcriptonic/issues" target="_blank">here</a>.`
+    "message": `<strong>Meet to MD encountered a new error</strong> <br /> Please report it <a href="https://github.com/juancruzobaid/meet-to-md/issues" target="_blank">here</a>.`
 }
-const reportErrorMessage = "There is a bug in TranscripTonic. Please report it at https://github.com/vivek-nexus/transcriptonic/issues"
+const reportErrorMessage = "There is a bug in Meet to MD. Please report it at https://github.com/juancruzobaid/meet-to-md/issues"
 
 
 /** @type {MutationObserverInit} */
@@ -33,6 +33,6 @@ const commonCSS = `background: rgb(255 255 255 / 100%);
 
 const NOTIFICATION_PLATFORM_CONFIGS = {
     "google_meet": {
-        notificationText: "<strong>TranscripTonic is running</strong> <br /> Do not turn off captions"
+        notificationText: "<strong>Meet to MD is running</strong> <br /> Do not turn off captions"
     }
 }

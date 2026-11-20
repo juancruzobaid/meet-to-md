@@ -70,7 +70,7 @@ function googleMeetRoutines(state) {
                     const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
                     if (resultSync.operationMode === "manual") {
                         console.log("Manual mode selected, leaving transcript off")
-                        showNotificationGoogleMeet({ status: 400, message: "<strong>TranscripTonic is not running</strong> <br /> Turn on captions using the CC icon, if needed" })
+                        showNotificationGoogleMeet({ status: 400, message: "<strong>Meet to MD is not running</strong> <br /> Turn on captions using the CC icon, if needed" })
                     }
                     else {
                         turnOnCaptionsGoogleMeet()

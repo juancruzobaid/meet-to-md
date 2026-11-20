@@ -3,10 +3,10 @@
 <html>
 
 <head>
-  <title>TranscripTonic</title>
+  <meta charset="utf-8">
+  <title>Meet to MD</title>
+  <link rel="stylesheet" href="../fonts/fonts.css">
   <style>
-    @import url("https://fonts.googleapis.com/css2?family=TASA+Explorer:wght@400;700&?family=SUSE:wght@700&display=swap");
-
     body {
       width: 560px;
       padding: 1.5rem;
@@ -138,8 +138,23 @@
       width: auto;
     }
 
+    .access-warning {
+      margin: 0.75rem 0 0 0;
+      color: orange;
+    }
+
+    .access-warning[hidden] {
+      display: none;
+    }
+
+    .access-warning button {
+      padding: 0;
+      margin-left: 0.25rem;
+      font-size: 0.875rem;
+    }
+
     .right-arrow {
-      font-family: "SUSE", sans-serif;
+      font-family: sans-serif;
       font-size: small;
     }
   </style>
@@ -150,9 +165,9 @@
     <div class="header">
       <div class="header-content">
         <div class="header-text">
-          <h1>TranscripTonic</h1>
+          <h1>Meet to MD</h1>
           <p class="header-description">
-            Simple Google Meet transcripts. Private and open source.
+            Google Meet transcripts as Markdown. Private and open source.
           </p>
         </div>
         <img class="logo" src="./../icon.png" alt="Extension icon" />
@@ -169,6 +184,10 @@
             <label for="enable-google-meet"><b>Google Meet</b></label>
           </div>
         </div>
+        <p id="meet-access-warning" class="access-warning" hidden>
+          Google Meet access is not granted, so transcripts can't be captured.
+          <button id="grant-meet-access">Grant access</button>
+        </p>
       </div>
       <hr class="divider" />
       <div class="radio-item">
@@ -196,7 +215,7 @@
         <img class="tool-logo" src="./../icons/notion.svg" alt="Notion logo">
       </div>
       <p style="margin-top: 0px;">You can integrate
-        TranscripTonic with your
+        Meet to MD with your
         favourite tools like <b>Google Docs, Notion, n8n and more</b> using <a href="../meetings.html#webhooks"
           target="_blank"><b>webhooks <span class="right-arrow">&rarr;</span></b></a></p>
     </div>
@@ -205,24 +224,25 @@
       <div class="footer">
         <a href="../meetings.html" target="_blank">Last 10 meetings <span class="right-arrow">&rarr;</span></a>
         <div>
-          <a href="https://github.com/vivek-nexus/transcriptonic#readme" target="_blank">Get help</a>
+          <a href="https://github.com/juancruzobaid/meet-to-md#readme" target="_blank">Get help</a>
           <span class="footer-separator">&#9679;</span>
-          <a href="https://github.com/vivek-nexus/transcriptonic/issues" target="_blank">Report a bug</a>
+          <a href="https://github.com/juancruzobaid/meet-to-md/issues" target="_blank">Report a bug</a>
         </div>
       </div>
       <p class="footer-link">
         <span>
           <span id="version"></span> /
           <!-- <button id="notice">Notice</button> -->
-          <a href="https://github.com/vivek-nexus/transcriptonic?tab=readme-ov-file#notice" target="_blank">Notice</a>
+          <a href="https://github.com/juancruzobaid/meet-to-md#notice" target="_blank">Notice</a>
         </span>
         <span>
-          Another project by <a href="https://vivek-nexus.github.io" target="_blank">Vivek</a>
+          <a href="https://github.com/juancruzobaid/meet-to-md#credits" target="_blank">Credits</a>
         </span>
       </p>
     </div>
   </div>
 
+  <script src="../shared/meet-access.js"></script>
   <script src="popup.js"></script>
 </body>
 

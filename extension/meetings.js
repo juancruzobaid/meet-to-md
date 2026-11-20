@@ -3,6 +3,8 @@
 /// <reference path="../types/index.js" />
 
 let isMeetingsTableExpanded = false
+// Cached copy of the saved webhook URL. Firefox only allows permissions.request() synchronously inside a click handler, so the retry button cannot wait for a storage read before requesting the webhook host permission.
+let savedWebhookUrl = ""
 
 document.addEventListener("DOMContentLoaded", function () {
     const webhookUrlForm = document.querySelector("#webhook-url-form")
@@ -25,8 +27,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     })
 
-    chrome.storage.onChanged.addListener(() => {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if ((areaName === "sync") && changes.webhookUrl) {
+            savedWebhookUrl = changes.webhookUrl.newValue || ""
+        }
         loadMeetings()
+    })
+
+    chrome.storage.sync.get(["webhookUrl"], function (resultSyncUntyped) {
+        const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
+        savedWebhookUrl = resultSync.webhookUrl || ""
     })
 
     if (recoverLastMeetingButton instanceof HTMLButtonElement) {
@@ -183,9 +193,29 @@ document.addEventListener("DOMContentLoaded", function () {
         })
     }
 
-    // handlePermissions()
+    // Google Meet access banner
+    updateMeetAccessBanner()
+    chrome.permissions.onAdded.addListener(updateMeetAccessBanner)
+    chrome.permissions.onRemoved.addListener(updateMeetAccessBanner)
+
+    const grantMeetAccessButton = document.querySelector("#grant-meet-access")
+    if (grantMeetAccessButton instanceof HTMLButtonElement) {
+        grantMeetAccessButton.addEventListener("click", function () {
+            // Called synchronously from the click handler (Firefox user-gesture rule for permissions.request)
+            requestGoogleMeetAccess()
+                .catch((error) => {
+                    console.error("Could not enable Google Meet:", error)
+                })
+                .finally(() => {
+                    updateMeetAccessBanner()
+                })
+        })
+    }
 })
 
+
+// Keep in sync with browser_specific_settings.gecko.data_collection_permissions.optional in manifest.json
+const WEBHOOK_DATA_COLLECTION_TYPES = ["personalCommunications", "websiteContent"]
 
 // Request runtime permission for webhook URL
 /**
@@ -197,11 +227,20 @@ function requestWebhookAndNotificationPermission(url) {
             const urlObj = new URL(url)
             const originPattern = `${urlObj.protocol}//${urlObj.hostname}/*`
 
-            // Request both host and notifications permissions
-            chrome.permissions.request({
+            /** @type {chrome.permissions.Permissions & { data_collection?: string[] }} */
+            const request = {
                 origins: [originPattern],
                 permissions: ["notifications"]
-            }).then((granted) => {
+            }
+
+            // Firefox (140+) built-in data consent: posting transcripts to a webhook sends meeting content off the device, so the optional data collection types declared in the manifest (browser_specific_settings.gecko.data_collection_permissions.optional) are requested in the same prompt. Chromium has no such concept and would reject the extra key, so it is only added in Firefox.
+            // @ts-ignore - browser exists only in Firefox
+            if ((typeof browser !== "undefined") && browser.runtime && (typeof browser.runtime.getBrowserInfo === "function")) {
+                request.data_collection = WEBHOOK_DATA_COLLECTION_TYPES
+            }
+
+            // Request host, notifications (and, in Firefox, data collection) permissions. Must stay synchronous within the click/submit handler (Firefox user-gesture rule).
+            chrome.permissions.request(request).then((granted) => {
                 if (granted) {
                     resolve("Permission granted")
                 } else {
@@ -238,9 +277,7 @@ function loadMeetings() {
                     const row = document.createElement("tr")
                     row.innerHTML = `
                     <td>
-                        <div contenteditable="true" class="meeting-title" data-index="${i}" title="Rename">
-                        ${meeting.meetingTitle || meeting.title || "Google Meet call"}
-                    </div>
+                        <div contenteditable="true" class="meeting-title" data-index="${i}" title="Rename"></div>
                     </td>
                     <td>
                      ${meeting.meetingSoftware ? meeting.meetingSoftware : ""} 
@@ -283,6 +320,8 @@ function loadMeetings() {
                     // Add event listener to meeting title input
                     const meetingTitleInput = row.querySelector(".meeting-title")
                     if (meetingTitleInput instanceof HTMLDivElement) {
+                        // Set as text: the title comes from the Meet page and must not be parsed as HTML
+                        meetingTitleInput.textContent = meeting.meetingTitle || meeting.title || "Google Meet call"
                         meetingTitleInput.addEventListener("blur", function () {
                             const updatedMeeting = /** @type {Meeting} */ {
                                 ...meeting,
@@ -323,44 +362,41 @@ function loadMeetings() {
                     const webhookPostButton = row.querySelector(".post-button")
                     if (webhookPostButton instanceof HTMLButtonElement) {
                         webhookPostButton.addEventListener("click", function () {
-                            chrome.storage.sync.get(["webhookUrl"], function (resultSyncUntyped) {
-                                const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
-                                if (resultSync.webhookUrl) {
-                                    // Request runtime permission for the webhook URL. Needed for cases when user signs on a new browser—webhook URL and other sync variables are available, but runtime permissions will be missing.
-                                    requestWebhookAndNotificationPermission(resultSync.webhookUrl).then(() => {
-                                        // Disable button and update text
-                                        webhookPostButton.disabled = true
-                                        webhookPostButton.textContent = meeting.webhookPostStatus === "new" ? "Posting..." : "Reposting..."
+                            if (savedWebhookUrl) {
+                                // Request runtime permission for the webhook URL. Needed for cases when user signs on a new browser—webhook URL and other sync variables are available, but runtime permissions will be missing.
+                                requestWebhookAndNotificationPermission(savedWebhookUrl).then(() => {
+                                    // Disable button and update text
+                                    webhookPostButton.disabled = true
+                                    webhookPostButton.textContent = meeting.webhookPostStatus === "new" ? "Posting..." : "Reposting..."
 
-                                        // Send message to background script to post webhook
-                                        const index = parseInt(webhookPostButton.getAttribute("data-index") ?? "-1")
-                                        /** @type {ExtensionMessage} */
-                                        const message = {
-                                            type: "post_webhook_at_index",
-                                            index: index
+                                    // Send message to background script to post webhook
+                                    const index = parseInt(webhookPostButton.getAttribute("data-index") ?? "-1")
+                                    /** @type {ExtensionMessage} */
+                                    const message = {
+                                        type: "post_webhook_at_index",
+                                        index: index
+                                    }
+                                    chrome.runtime.sendMessage(message, (responseUntyped) => {
+                                        const response = /** @type {ExtensionResponse} */ (responseUntyped)
+                                        loadMeetings()
+                                        if (response.success) {
+                                            alert("Posted successfully!")
                                         }
-                                        chrome.runtime.sendMessage(message, (responseUntyped) => {
-                                            const response = /** @type {ExtensionResponse} */ (responseUntyped)
-                                            loadMeetings()
-                                            if (response.success) {
-                                                alert("Posted successfully!")
+                                        else {
+                                            const parsedError = /** @type {ErrorObject} */ (response.message)
+                                            if (typeof parsedError === 'object') {
+                                                console.error(parsedError.errorMessage)
                                             }
-                                            else {
-                                                const parsedError = /** @type {ErrorObject} */ (response.message)
-                                                if (typeof parsedError === 'object') {
-                                                    console.error(parsedError.errorMessage)
-                                                }
-                                            }
-                                        })
-                                    }).catch((error) => {
-                                        alert("Fine! No webhooks for you!")
-                                        console.error("Webhook permission error:", error)
+                                        }
                                     })
-                                }
-                                else {
-                                    alert("Please provide a webhook URL")
-                                }
-                            })
+                                }).catch((error) => {
+                                    alert("Fine! No webhooks for you!")
+                                    console.error("Webhook permission error:", error)
+                                })
+                            }
+                            else {
+                                alert("Please provide a webhook URL")
+                            }
                         })
                     }
 
@@ -390,84 +426,24 @@ function loadMeetings() {
     })
 }
 
-function handlePermissions() {
-    chrome.scripting
-        .getRegisteredContentScripts()
-        .then((scripts) => {
-            console.log(scripts)
-        })
+/**
+ * Shows a banner with a "Grant access" button when the user wants Google Meet capture but the browser does not grant
+ * Meet access (Firefox treats host permissions as optional and the user can revoke them at any time).
+ */
+function updateMeetAccessBanner() {
+    const banner = document.querySelector("#meet-access-banner")
+    if (!banner) {
+        return
+    }
 
     chrome.storage.sync.get(["wantGoogleMeet"], function (resultSyncUntyped) {
         const resultSync = /** @type {ResultSync} */ (resultSyncUntyped)
 
-        console.log(resultSync)
-
-        /** @type {Platform[]} */
-        const wantedPlatforms = []
-        //  Consider enabled if user has not explicitly opted out
-        if (resultSync.wantGoogleMeet) {
-            wantedPlatforms.push("google_meet")
-        }
-
-        console.log(`Wanted platforms: ${wantedPlatforms}`)
-        /** @type {ExtensionMessage} */
-        const message = {
-            type: "get_platform_permission_status",
-            platform: wantedPlatforms
-        }
-        chrome.runtime.sendMessage(message, (responseUntyped) => {
-            const response = /** @type {ExtensionResponse} */ (responseUntyped)
-            if (response.success) {
-                console.log(response.message)
-
-                /** @type {Platform[]} */
-                const permissionMissingPlatforms = []
-
-                for (let i = 0; i < wantedPlatforms.length; i++) {
-                    if (Array.isArray(response.message) && response.message[i] === "Disabled") {
-                        permissionMissingPlatforms.push(wantedPlatforms[i])
-                    }
-                }
-
-                if (permissionMissingPlatforms.length > 0) {
-                    const dialog = document.querySelector('#permission-dialog')
-                    const reviewButton = /** @type {HTMLButtonElement} */ (document.querySelector('#review-button'))
-                    const laterButton = /** @type {HTMLButtonElement} */ (document.querySelector('#later-button'))
-
-                    // Show the modal
-                    // @ts-ignore
-                    dialog?.showModal()
-                    reviewButton?.focus()
-
-                    // Handle the "Confirm" action
-                    reviewButton?.addEventListener("click", () => {
-                        // @ts-ignore
-                        dialog?.close()
-
-                        // This execution context is now considered a "User Gesture"
-                        const disableMsg = {
-                            type: "disable_platform",
-                            platform: permissionMissingPlatforms
-                        }
-
-                        chrome.runtime.sendMessage(disableMsg, (response) => {
-                            if (response.success) {
-                                chrome.runtime.sendMessage({
-                                    type: "enable_platform",
-                                    platform: permissionMissingPlatforms
-                                })
-                            }
-                        })
-                    })
-
-                    // Handle the "Cancel" action
-                    laterButton?.addEventListener("click", () => {
-                        // @ts-ignore
-                        dialog?.close()
-                    })
-
-                }
-            }
+        hasGoogleMeetAccess().then((hasAccess) => {
+            // Do not nag users who explicitly turned Google Meet off in the popup
+            banner.toggleAttribute("hidden", hasAccess || resultSync.wantGoogleMeet === false)
+        }).catch((error) => {
+            console.error(error)
         })
     })
 }

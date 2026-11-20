@@ -30,7 +30,7 @@ function createContentScriptState(meetingSoftware, platform) {
         hasMeetingEnded: false,
         extensionStatusJSON: {
             status: 200,
-            message: "<strong>TranscripTonic is running</strong> <br /> Do not turn off captions"
+            message: "<strong>Meet to MD is running</strong> <br /> Do not turn off captions"
         }
     }
 }
@@ -336,15 +336,15 @@ function renderFab() {
     const html = document.querySelector("html")
     const fab = document.createElement("button")
     fab.id = "transcriptonic-fab"
-    fab.ariaLabel = "TranscripTonic"
-    fab.title = "TranscripTonic"
+    fab.ariaLabel = "Meet to MD"
+    fab.title = "Meet to MD"
     fab.style.cssText = fabCss
 
     const logoUrl = LOGO_URL
 
     fab.innerHTML = `
         <div id="fab-main-content" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-            <img id="fab-default-logo" src="${logoUrl}" alt="TranscripTonic" draggable="false" style="width: 20px; height: 20px; object-fit: contain;" />
+            <img id="fab-default-logo" src="${logoUrl}" alt="Meet to MD" draggable="false" style="width: 20px; height: 20px; object-fit: contain;" />
             <span id="fab-letter-mark" style="display: none; color: #ffffff; font-weight: bold; font-size: 16px; text-transform: uppercase; font-family: sans-serif;"></span>
         </div>
 
@@ -369,7 +369,17 @@ function renderFab() {
     fab.addEventListener("click", () => {
         /** @type {ExtensionMessage} */
         const message = { type: "open_side_panel" }
-        chrome.runtime.sendMessage(message, () => { })
+        chrome.runtime.sendMessage(message, (responseUntyped) => {
+            const response = /** @type {ExtensionResponse | undefined} */ (responseUntyped)
+            if (chrome.runtime.lastError || !response || response.success) {
+                return
+            }
+            // Firefox cannot open the sidebar from a content script message (user gesture required), so tell the user where to find it
+            const parsedError = /** @type {ErrorObject} */ (response.message)
+            if (parsedError && (parsedError.errorCode === "017")) {
+                showNotificationGoogleMeet({ status: 400, message: "<strong>Open the Meet to MD sidebar from the browser sidebar menu</strong>" })
+            }
+        })
     })
 
     // Initial storage query on load

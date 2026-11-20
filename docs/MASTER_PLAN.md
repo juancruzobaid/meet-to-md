@@ -4,9 +4,9 @@
 A lean, private, open source Chrome extension that turns every Google Meet into a structured Markdown note in Obsidian. Zero data leaves the device. No AI, no subscriptions, no accounts. Just the transcript, your vault, your pipeline.
 
 ## Current Project Status
-**Phase:** Cleanup completed (Meet only, no telemetry) — next: Firefox compatibility
-**Last Update:** 2026-11-19
-**Features running:** Google Meet only. MD export with YAML frontmatter (saves to Downloads/meet-to-md/), auto/manual mode, webhooks, meeting history, live side panel. No telemetry.
+**Phase:** Firefox/Zen compatibility done (pending manual validation in Día and Zen) — next: AMO signing (unlisted, "On your own")
+**Last Update:** 2026-11-20
+**Features running:** Google Meet only. Chromium (Chrome, Día) and Firefox ≥140 / Zen from one codebase. MD export with YAML frontmatter (saves to Downloads/meet-to-md/), auto/manual mode, webhooks, meeting history, live side panel / sidebar. No telemetry, no remote fonts.
 
 ## Feature Roadmap
 
@@ -72,11 +72,16 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 - **Main Files:** `extension/manifest.json`, `extension/background-script/*`, `extension/content-scripts/common-*.js`, `extension/popup/*`, `extension/meetings.js`, `types/index.js`
 - **Completed:** 2026-11-19
 
+#### Firefox/Zen compatibility, bundled fonts, Meet to MD branding
+- **Description:** Same codebase and manifest load in Chromium and Firefox ≥140 / Zen: dual background declaration, `sidebar_action`, gecko settings with `data_collection_permissions`, blob: downloads in Firefox, permission requests inside UI click handlers, Meet access warning + Grant access button, `runtime.onStartup` re-registration, sidebar hint in Firefox. TASA Explorer bundled locally (no Google Fonts). User-visible branding is "Meet to MD"; README rewritten with install steps for both browser families.
+- **Main Files:** `extension/manifest.json`, `extension/background-script/*`, `extension/shared/meet-access.js`, `extension/popup/*`, `extension/meetings.*`, `extension/fonts/*`, `README.md`
+- **Completed:** 2026-11-20 (static validation only — pending manual validation in Día and Zen)
+
 ### 🚧 IN PROGRESS
 
-#### Firefox compatibility
-- **Description:** Make the extension load and work in Firefox (MV3), keeping a single codebase with Chromium (Día/Chrome).
-- **Status:** Next task (Step 2). Not started.
+#### AMO signing (Firefox permanent install)
+- **Description:** Sign `meet-to-md-firefox.zip` as an unlisted add-on on addons.mozilla.org ("On your own") and install the signed .xpi in Zen.
+- **Status:** Next task. Blocked on manual validation of the Firefox build.
 
 ### ❌ DECIDED AGAINST
 
@@ -95,7 +100,8 @@ A lean, private, open source Chrome extension that turns every Google Meet into 
 
 #### Low Priority / Nice to Have
 - [ ] **MEET-DOM.md:** Document Meet language settings DOM selectors for the language switcher.
-- [ ] **README update:** Replace TranscripTonic README with Meet to MD description, fork attribution, install instructions.
+- [x] **README update:** Replace TranscripTonic README with Meet to MD description, fork attribution, install instructions. (Done 2026-11-20)
+- [ ] **Webhook consent check (Firefox):** skip auto-posting if the user revoked the optional data-collection consent in about:addons.
 - [ ] **Custom filename pattern:** Let user configure the MD filename format in settings.
 
 ## Component Architecture Map

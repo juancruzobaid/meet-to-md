@@ -196,3 +196,5 @@
 // | **013** | "No meetings found. May be attend one?" |
 // | **014** | "Empty transcript and empty chatMessages" |
 // | **015** | "Invalid index" |
+// | **017** | "Open the Meet to MD sidebar from the browser sidebar menu" (Firefox: sidebar cannot be opened without a user gesture) |
+// | **018** | "Failed to open side panel" / "Side panel is not supported in this browser" / "No active tab found" |

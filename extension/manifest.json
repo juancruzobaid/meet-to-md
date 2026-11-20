@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meet to MD",
-  "version": "3.4.5",
+  "version": "3.5.0",
   "description": "Google Meet transcripts as Markdown. Private and open source.",
   "action": {
     "default_icon": "icon.png",
@@ -9,6 +9,11 @@
   },
   "side_panel": {
     "default_path": "side-panel/index.html"
+  },
+  "sidebar_action": {
+    "default_panel": "side-panel/index.html",
+    "default_title": "Meet to MD",
+    "default_icon": "icon.png"
   },
   "icons": {
     "128": "icon.png"
@@ -30,6 +35,9 @@
   ],
   "background": {
     "service_worker": "background-script/index.js",
+    "scripts": [
+      "background-script/index.js"
+    ],
     "type": "module"
   },
   "web_accessible_resources": [
@@ -41,5 +49,23 @@
         "https://meet.google.com/*"
       ]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "meet-to-md@juancruz.com.ar",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ],
+        "optional": [
+          "personalCommunications",
+          "websiteContent"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
 }

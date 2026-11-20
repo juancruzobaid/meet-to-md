@@ -4,10 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TranscripTonic—Meetings</title>
+    <title>Meet to MD—Meetings</title>
+    <link rel="stylesheet" href="fonts/fonts.css">
     <style>
-        @import url("https://fonts.googleapis.com/css2?family=TASA+Explorer:wght@400;700&display=swap");
-
         html {
             scroll-behavior: smooth;
         }
@@ -21,24 +20,24 @@
             accent-color: #2A9ACA;
         }
 
-        dialog {
-            padding: 1.5rem 2rem;
-            color: #C0C0C0;
-            background: #071f29;
-            font-size: 1rem;
-            border: 1px solid #2a9aca33;
+        .access-banner {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid orange;
             border-radius: 0.5rem;
+            background: rgba(255, 165, 0, 0.08);
         }
 
-        dialog::backdrop {
-            background-color: black;
-            opacity: 0.75;
+        .access-banner[hidden] {
+            display: none;
         }
 
-        #later-button {
-            background: transparent;
-            color: #2A9ACA;
-            border: 1px solid #2A9ACA;
+        .access-banner p {
+            margin: 0;
         }
 
         h1 {
@@ -381,20 +380,15 @@
 
 
     <div style="margin: 0px auto; max-width: 1440px;">
-        <dialog id="permission-dialog" closedby="any">
-            <p style="margin-bottom: 1rem;">TranscripTonic needs additional permissions to function smoothly.
-                <br />Please review and
-                approve?
-                <br /><br />
-                <span class="sub-text">PS: Sorry for hijacking whatever you were doing :(</span>
-            </p>
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button id="later-button">Later</button>
-                <button id="review-button">Review</button>
-            </div>
-        </dialog>
+        <h1>Meet to MD</h1>
 
-        <h1>TranscripTonic</h1>
+        <div id="meet-access-banner" class="access-banner" hidden>
+            <p><b>Google Meet access is not granted.</b><br />
+                <span class="sub-text">Meet to MD cannot capture transcripts until you allow access to
+                    meet.google.com.</span>
+            </p>
+            <button id="grant-meet-access">Grant access</button>
+        </div>
 
         <section id="last-10-meetings">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -423,9 +417,9 @@
         </section>
 
         <section id="webhooks">
-            <h2 style="margin-bottom: 0;">Integrate TranscripTonic with your favourite tools</h2>
+            <h2 style="margin-bottom: 0;">Integrate Meet to MD with your favourite tools</h2>
 
-            <p style="margin-top: 0.5rem" class="sub-text">You can connect TranscripTonic directly to any tool that
+            <p style="margin-top: 0.5rem" class="sub-text">You can connect Meet to MD directly to any tool that
                 supports webhooks.
                 If
                 it does not, you can use
@@ -566,6 +560,7 @@
         </section>
     </div>
 
+    <script src="shared/meet-access.js"></script>
     <script src="meetings.js"></script>
 </body>
 
