@@ -44,6 +44,43 @@
 
 ## 📚 CHANGE HISTORY
 
+### 2026-11-24 17:13 - Prevent duplicate transcript download and storage at meeting end
+
+**Task received:** Bug reported by the owner (Chromium/Día): when a meeting ends, the `.md` is downloaded twice (`Title.md` and `Title (1).md`), probably also stored twice in "Last 10 meetings". Make end-of-meeting processing idempotent, fix the races, guard the content script. Version 3.5.1.
+
+**Root cause:** `processLastMeeting()` had three independent triggers and was not idempotent: `pickupLastMeetingFromStorage()` always pushed an entry and the download/webhook always ran. Reproduced on 26e01e8 with a fake-`chrome` harness:
+- `meeting_ended` sent more than once → 2 downloads (2 stored entries if the second arrives after the first saved; 1 entry if they overlap, because both read the same `meetings` array). The content script did send it on every click: 3 clicks on the end-call button → 3 messages, and the last transcript block was also pushed 3 times.
+- Tab closed, then `meeting_ended` (that order) → 2 downloads, 2 webhook posts. The opposite order (`meeting_ended` first) did **not** reproduce: the `meetingTabId: "processing"` write is issued before `onRemoved`'s read.
+- `recover_last_meeting` while processing is in progress → 2 downloads (and 2 entries if it arrived before the first save completed).
+- `recoverLastMeeting()` only compared with the *last* saved meeting.
+- Which of these happened in the owner's browser is not proven; a second click reaching the end-call listener is the one that matches "after a normal hang-up, repeatedly".
+
+**Files modified:**
+- `extension/background-script/meetings.js` — `pickupLastMeetingFromStorage()` resolves `{ alreadyProcessed }`; an already saved `meetingStartTimestamp` is never pushed again, only updated in place with longer transcript / chat or later end timestamp (title, webhook status and language kept). `processLastMeeting()` skips download and webhook when already processed, and has an in-memory lock: overlapping triggers share the run's result, unless storage holds data that run did not save (another meeting, or more content), which is processed right after. `recoverLastMeeting()` checks all saved meetings. Missing `transcript`/`chatMessages` keys are treated as empty (an exception there would have left the lock held).
+- `extension/background-script/index.js` — `handledMeetingTabIds` guard set synchronously on `meeting_ended` and `onRemoved` (cleared by `new_meeting_started`); `meetingTabId: "processing"` kept for service-worker restarts. Shared `handleMeetingEnd()`; tab id cleared / deferred update applied only once all triggers are done. `onRemoved` processing errors are now caught.
+- `extension/content-scripts/google-meet/index.js` — end-call click listener returns immediately if `state.hasMeetingEnded`.
+- `extension/manifest.json` — version 3.5.1.
+- `extension-unpacked.zip`, `meet-to-md-firefox.zip` — rebuilt.
+- `docs/BUSINESS_LOGIC.md`
+
+**Tests performed:**
+- Fake-`chrome` Node harness (in-memory storage, `downloads.download` and `fetch` spies, real `background-script/index.js`): 25 scenarios × {Chromium data: URL, Firefox blob: URL} × storage latency {0, 1, 5, 20 ms} = 200 runs → 200/200 pass (26e01e8: 88/200). Covers: end/close in both orders, end twice (same tick and sequential), recovery during/after/before processing, two meetings in sequence and overlapping, manual download and webhook repost, file-name fallback, in-place update (more / less complete, during processing), empty meeting, unrelated tab closed, rejoin in the same tab, deferred update, webhook failure, 10-meeting cap, service-worker restart, auto-download off.
+- Content script in a Node VM: 3 clicks on end-call → 1 `meeting_ended` (before: 3)
+- Syntax check of changed .js (background as ES modules) → OK
+- `npx web-ext lint --source-dir extension` → 0 errors, 0 notices, 8 warnings (same as before)
+- Not tested in a browser — owner to verify in Día
+
+**Final result:** One stored meeting, one automatic download and one automatic webhook post per `meetingStartTimestamp`. Markdown format, filename, `uniquify`, manual download and manual webhook repost unchanged.
+
+**Known limitation (not changed):** opening another Meet page (lobby included) while a meeting is in progress in a different tab makes recovery process the ongoing meeting and then resets the shared state with a new `meetingStartTimestamp`, so the same meeting ends up as two entries / two downloads. Reproduced in the harness; not covered by per-timestamp idempotency.
+
+**Business Logic updated:** yes — Caption Capture (idempotent end-of-meeting processing), Export (manual download)
+**Master Plan updated:** no
+
+**Next step:** Manual check in Día. Decide whether to fix the second-Meet-tab limitation.
+
+---
+
 ### 2026-11-20 16:45 - Firefox/Zen compatibility, bundled fonts and Meet to MD branding
 
 **Task received:** Step 2. Make the same codebase (one manifest, no per-browser build) run in Chromium (Chrome, Día) and Firefox-based browsers (Firefox, Zen) without changing Chromium behaviour; bundle the UI font locally (no Google Fonts); rebrand user-visible "TranscripTonic" to "Meet to MD". Markdown output/filename, Meet caption capture logic and webhook behaviour untouched.

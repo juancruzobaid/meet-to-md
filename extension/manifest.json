@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meet to MD",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "Google Meet transcripts as Markdown. Private and open source.",
   "action": {
     "default_icon": "icon.png",

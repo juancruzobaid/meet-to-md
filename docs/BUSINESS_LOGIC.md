@@ -53,6 +53,11 @@ Meet to MD is a browser extension that captures Google Meet captions in real tim
 - Permissions are requested synchronously in the click handler of the popup / meetings page (Firefox user-gesture rule); the background only registers the content script. `wantGoogleMeet: true` is saved before the prompt, so `permissions.onAdded` registers the script even if the Firefox popup closes during the prompt
 - The content script is re-registered on install/update, on browser startup (`runtime.onStartup`) and when permissions are added, if the user has not opted out
 - The meeting tab is the tab that sent `new_meeting_started` (active-tab query only as fallback); closing it triggers processing
+- End-of-meeting processing is **idempotent per `meetingStartTimestamp`**: whichever triggers fire (`meeting_ended`, tab closed, recovery) and however many times, a meeting is stored once, auto-downloaded once and auto-posted to the webhook once
+- If a trigger finds its meeting already saved, no entry is added; the saved entry is updated in place only with more complete data (more transcript blocks / chat messages, or a later end time). Title edits, webhook status and language are kept, and the file is not downloaded again
+- While processing is in progress, further triggers share its result (in-memory lock); if another meeting ended meanwhile, it is processed right after
+- `meeting_ended` is sent at most once per meeting by the content script
+- Two meetings with different `meetingStartTimestamp` are always two entries and two downloads (e.g. reloading the Meet tab mid-meeting starts a new one)
 
 **Connections:** Writes to `chrome.storage.local` → triggers Background export on meeting end
 
@@ -63,7 +68,7 @@ Meet to MD is a browser extension that captures Google Meet captions in real tim
 
 **What the user can do:**
 - Receive a `.md` file automatically when the meeting ends (auto mode)
-- Download manually from meeting history
+- Download manually from meeting history (always downloads, every time; a repeated download gets a ` (1)` suffix)
 
 **Business rules:**
 - File saved to `meet-to-md/` subfolder in the browser's default Downloads directory

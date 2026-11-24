@@ -27,6 +27,38 @@ const ASYNC_RESPONSE_MESSAGE_TYPES = [
     "open_side_panel"
 ]
 
+/**
+ * Tabs whose meeting end is being (or was) handled. Set synchronously before any storage call, so "meeting_ended" and the tab being closed right after cannot both pass the check. The storage based guard (meetingTabId: "processing") is kept for service worker restarts.
+ * @type {Set<number>}
+ */
+const handledMeetingTabIds = new Set()
+
+// Number of meeting end triggers still being processed
+let activeMeetingEndCount = 0
+
+/**
+ * @throws error codes: 009, 010, 011, 012, 013, 014
+ */
+function handleMeetingEnd() {
+    activeMeetingEndCount++
+
+    return new Promise((resolve) => {
+        // Prevent misfires of onRemoved until next meeting. Also prevents available update from being applied, during meeting post processing.
+        chrome.storage.local.set({ meetingTabId: "processing" }, function () {
+            console.log("Meeting tab id set to processing meeting")
+            resolve(undefined)
+        })
+    })
+        .then(() => processLastMeeting())
+        .finally(() => {
+            activeMeetingEndCount--
+            // Only once all triggers are done, otherwise a deferred update could reload the extension while another one is still processing
+            if (activeMeetingEndCount === 0) {
+                clearTabIdAndApplyUpdate()
+            }
+        })
+}
+
 chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendResponse) {
     const message = /** @type {ExtensionMessage} */ (messageUnTyped)
     console.log(message.type)
@@ -39,6 +71,8 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
                 console.error("Could not determine meeting tab id")
                 return
             }
+            // New meeting in this tab, so its end has to be handled again
+            handledMeetingTabIds.delete(tabId)
             chrome.storage.local.set({ meetingTabId: tabId }, function () {
                 console.log("Meeting tab id saved")
             })
@@ -55,28 +89,25 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
     }
 
     if (message.type === "meeting_ended") {
-        // Prevents double downloading of transcript from tab closed event listener. Also prevents available update from being applied, during meeting post processing.
-        chrome.storage.local.set({ meetingTabId: "processing" }, function () {
-            console.log("Meeting tab id set to processing meeting")
+        // Prevents double downloading of transcript from tab closed event listener
+        if (sender.tab && (typeof sender.tab.id === "number")) {
+            handledMeetingTabIds.add(sender.tab.id)
+        }
 
-            processLastMeeting()
-                .then(() => {
-                    /** @type {ExtensionResponse} */
-                    const response = { success: true }
-                    sendResponse(response)
-                })
-                .catch((error) => {
-                    // Fails with error codes: 009, 010, 011, 012, 013, 014
-                    const parsedError = /** @type {ErrorObject} */ (error)
+        handleMeetingEnd()
+            .then(() => {
+                /** @type {ExtensionResponse} */
+                const response = { success: true }
+                sendResponse(response)
+            })
+            .catch((error) => {
+                // Fails with error codes: 009, 010, 011, 012, 013, 014
+                const parsedError = /** @type {ErrorObject} */ (error)
 
-                    /** @type {ExtensionResponse} */
-                    const response = { success: false, message: parsedError }
-                    sendResponse(response)
-                })
-                .finally(() => {
-                    clearTabIdAndApplyUpdate()
-                })
-        })
+                /** @type {ExtensionResponse} */
+                const response = { success: false, message: parsedError }
+                sendResponse(response)
+            })
     }
 
     if (message.type === "download_transcript_at_index") {
@@ -263,20 +294,26 @@ chrome.runtime.onMessage.addListener(function (messageUnTyped, sender, sendRespo
 
 // Download last meeting if meeting tab is closed
 chrome.tabs.onRemoved.addListener(function (tabId) {
+    if (handledMeetingTabIds.has(tabId)) {
+        console.log("Meeting end already handled for this tab")
+        return
+    }
+    handledMeetingTabIds.add(tabId)
+
     chrome.storage.local.get(["meetingTabId"], function (resultLocalUntyped) {
         const resultLocal = /** @type {ResultLocal} */ (resultLocalUntyped)
 
         if (tabId === resultLocal.meetingTabId) {
             console.log("Successfully intercepted tab close")
 
-            // Prevent misfires of onRemoved until next meeting. Also prevents available update from being applied, during meeting post processing.
-            chrome.storage.local.set({ meetingTabId: "processing" }, function () {
-                console.log("Meeting tab id set to processing meeting")
-
-                processLastMeeting().finally(() => {
-                    clearTabIdAndApplyUpdate()
-                })
+            handleMeetingEnd().catch((error) => {
+                // Fails with error codes: 009, 010, 011, 012, 013, 014
+                console.error("Processing after tab close failed:", error)
             })
+        }
+        else {
+            // Not a meeting tab
+            handledMeetingTabIds.delete(tabId)
         }
     })
 })

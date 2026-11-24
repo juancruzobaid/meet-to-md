@@ -148,6 +148,10 @@ function googleMeetRoutines(state) {
         try {
             // CRITICAL DOM DEPENDENCY. Event listener to capture meeting end button click by user
             selectElements(SELECTORS_GOOGLE_MEET.GOOGLE_SYMBOLS, SELECTORS_GOOGLE_MEET.TEXT_CALL_END)[0].parentElement.parentElement.addEventListener("click", () => {
+                // Send "meeting_ended" at most once per meeting (double click, or Meet re-dispatching the click)
+                if (state.hasMeetingEnded) {
+                    return
+                }
                 // To suppress further errors
                 state.hasMeetingEnded = true
 
